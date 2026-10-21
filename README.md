@@ -1,5 +1,7 @@
 # bruxosdovfx • SyncTile (MiniMax H3) — v5.5
 
+https://github.com/user-attachments/assets/a555941d-a745-4c8e-b860-c3d2c5335934
+
 **[Português](#português) · [English](#english) · [中文](#中文) · [Referências / References / 参考文献](#referências--references--参考文献)**
 
 SyncTile: [NyckM/Bruxosdovfx-SyncTile-MiniMax-H3-v5.4](https://github.com/NyckM/Bruxosdovfx-SyncTile-MiniMax-H3-v5.4) · Media IO: [NyckM/Video-Util-ComfYUI](https://github.com/NyckM/Video-Util-ComfYUI) · LoRA: [Background Replace v3](https://huggingface.co/NyckM/Background_Replace_Minimax_H3)
@@ -26,6 +28,8 @@ O vídeo grande ou longo é dividido em **regiões que se sobrepõem** (tiles no
 1. `git clone https://github.com/NyckM/Bruxosdovfx-SyncTile-MiniMax-H3-v5.4` dentro de `ComfyUI/custom_nodes/` (ou copie a pasta `bruxosdovfx-SyncTile`). **Apague** `ComfyUI-SyncTile-H3` se existir (versão antiga).
 2. Reinicie. O console mostra `[bruxosdovfx • SyncTile] v5.5 carregado`.
 3. Instale também o pack **bruxosdovfx Media IO** — [https://github.com/NyckM/Video-Util-ComfYUI](https://github.com/NyckM/Video-Util-ComfYUI) (Load Video Pro, Load Image, Save Video Pro — veja abaixo). Precisa de um ComfyUI com os nodes nativos do MiniMax H3. Para gravar o arquivo de vídeo: ffmpeg (no PATH, em `FFMPEG_PATH`, ou `pip install imageio-ffmpeg`).
+
+<img width="1802" height="1540" alt="image" src="https://github.com/user-attachments/assets/0d2aa61d-c309-45e2-af4d-b533bb6663fa" />
 
 ### Os nodes (categoria `bruxosdovfx/SyncTile`)
 | Node | Para que serve |
