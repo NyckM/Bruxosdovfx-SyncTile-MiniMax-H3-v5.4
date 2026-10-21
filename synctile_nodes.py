@@ -258,6 +258,7 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
             latent_image = self.inner_model.process_latent_in(latent_image)
 
         self.full_shapes = latent_shapes
+        self._device, self._seed = device, seed
         n_windows = len({r.get("t") for r in self.grid})
         self.tiles = []
         for i, r in enumerate(self.grid):
@@ -272,7 +273,7 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
             tnoise, timage = self._crop_pack(noise, latent_shapes, r), self._crop_pack(latent_image, latent_shapes, r)
             tconds = comfy.samplers.process_conds(self.inner_model, tnoise, raw, device, timage, None, seed,
                                                   latent_shapes=shapes)
-            dconds = None
+            dconds, draw = None, None
             if getattr(self, "detail_conds", None) is not None:
                 draw = {"positive": comfy.sampler_helpers.convert_cond(self.detail_conds["conds"][i])}
                 if "negative" in raw:
@@ -282,6 +283,7 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
             t0, tn = r["t"]
             w3 = r["tw"].view(-1, 1, 1) * r["weight"][None]
             self.tiles.append({"box": r["box"], "t": (t0, tn), "a": r.get("a"), "shapes": shapes,
+                               "raw": raw, "draw": draw if dconds is not None else None,
                                "conds": tconds, "conds_detail": dconds,
                                "w3": w3.to(device=device, dtype=torch.float32),
                                "w2": r["weight"].to(device=device, dtype=torch.float32),
@@ -365,6 +367,21 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                             m[..., :ac] = 0
                             mparts.append(m)
                     mask = _pack(mparts)
+                    # H3 runs masked (locked) tokens at its conditioning timestep only when the conds carry the
+                    # mask, so rebuild this window's conds with it (the sampler then injects those tokens clean)
+                    for tr in self.tiles:
+                        loc = {"box": tr["box"], "t": (0, tn), "a": (0, a[1]) if a else None}
+                        rn = self._crop_pack(wnoise, wshapes, loc)
+                        ri = self._crop_pack(wlat, wshapes, loc)
+                        rm = self._crop_pack(mask, wshapes, loc)
+                        raw = {k2: [c.copy() for c in v2] for k2, v2 in tr["raw"].items()}
+                        tr["conds"] = comfy.samplers.process_conds(self.inner_model, rn, raw, self._device, ri, rm,
+                                                                   self._seed, latent_shapes=tr["shapes"])
+                        if tr.get("draw") is not None:
+                            draw = {k2: [c.copy() for c in v2] for k2, v2 in tr["draw"].items()}
+                            tr["conds_detail"] = comfy.samplers.process_conds(self.inner_model, rn, draw, self._device,
+                                                                              ri, rm, self._seed,
+                                                                              latent_shapes=tr["shapes"])
 
                 def cb(i, x0, x, total, t=t, a=a):
                     if callback is None:
