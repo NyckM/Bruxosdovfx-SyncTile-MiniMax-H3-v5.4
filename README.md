@@ -20,7 +20,7 @@ O vídeo grande ou longo é dividido em **regiões que se sobrepõem** (tiles no
 ### Instalação
 1. Copie a pasta `bruxosdovfx-SyncTile` para `ComfyUI/custom_nodes/`. **Apague** `ComfyUI-SyncTile-H3` se existir (versão antiga).
 2. Reinicie. O console mostra `[bruxosdovfx • SyncTile] v5.4 carregado`.
-3. Precisa de um ComfyUI com os nodes nativos do MiniMax H3. Para gravar o arquivo de vídeo: ffmpeg (no PATH, em `FFMPEG_PATH`, ou `pip install imageio-ffmpeg`).
+3. Instale também o pack **bruxosdovfx Media IO** (Load Video Pro, Load Image, Save Video Pro — veja abaixo). Precisa de um ComfyUI com os nodes nativos do MiniMax H3. Para gravar o arquivo de vídeo: ffmpeg (no PATH, em `FFMPEG_PATH`, ou `pip install imageio-ffmpeg`).
 
 ### Os nodes (categoria `bruxosdovfx/SyncTile`)
 | Node | Para que serve |
@@ -56,6 +56,19 @@ Tile 4096 no estágio 1 (significa "sem tiles"), min_overlap 16, sync_mode "per 
 - **Erro de ffmpeg / BrokenPipe:** o node mostra a mensagem do ffmpeg; sem libx265 ele grava h264 sozinho.
 - **"unexpected keyword argument":** versão antiga instalada; apague a pasta antiga e reinicie.
 
+### Nodes Bruxos Media IO (necessários no workflow)
+O workflow também usa o pack **bruxosdovfx Media IO** (nodes 🧙 de entrada e saída). Instale-o junto com o SyncTile.
+
+| Node | No workflow v16 | O que faz |
+| --- | --- | --- |
+| **🧙 Load Video Pro** | Sim (vídeo fonte) | Carrega o vídeo com `force_rate` (use **24**), `frame_load_cap` (0 = todos), `skip_first_frames`, `select_every_nth`, crop/fit, giro/flip e `pad_grade` **"H3 17n+5"** (ajusta o nº de frames à grade do H3). Saídas: images, video, audio, fps, frame_count, width, height, video_info. Opções de cache em SSD e de importar mais bits. |
+| **🧙 Load Image** | Sim (foto de referência / guia 1) | Carrega imagem com fit/crop, aspecto, giro e flip. Saídas: image, mask, width, height. |
+| **🧙 Save Video Pro** | Sim (recebe IMAGE do Stream Decode) | Grava mp4/h264 e outros formatos (inclui EXR), crf/preset, espaço de cor, `start_frame` (1001), versão automática no nome, seed no nome, burn-in, grão de filme (ex.: Kodak 5207), review mp4 e JSON lateral com os dados do render. |
+| **Load Video** | Não | Versão simples do carregador de vídeo. |
+| **Load EXR** | Não | Lê EXR e sequências EXR com gestão de cor OCIO/ACES (ACEScg → sRGB), exposição, camadas e janela de dados. |
+| **Hold to Seconds** | Não | Segura/estende frames até uma duração em segundos (ou corta o excesso). |
+| **H3 Frames** | Não | Converte duração/nº de frames para a grade do H3 (17n+5), com arredondamento e ajuste (ex.: pingpong). |
+
 ### LoRA Background Replace v3 (resumo)
 Mescla experimental de **cinco LoRAs de outros autores** para MiniMax H3 (não é treino original). Arquivo `Background Replace v3.safetensors`, BF16, ~1,91 GB, mescla por concatenação de ranks (sem SVD); sem metadados (os créditos ficam neste README).
 
@@ -79,7 +92,7 @@ A large or long video is split into **overlapping regions** (spatial tiles × te
 ### Install
 1. Copy the `bruxosdovfx-SyncTile` folder into `ComfyUI/custom_nodes/`. **Delete** `ComfyUI-SyncTile-H3` if present (old version).
 2. Restart. The console prints `[bruxosdovfx • SyncTile] v5.4 carregado`.
-3. Needs a ComfyUI with the native MiniMax H3 nodes. To write the video file: ffmpeg (on PATH, in `FFMPEG_PATH`, or `pip install imageio-ffmpeg`).
+3. Also install the **bruxosdovfx Media IO** pack (Load Video Pro, Load Image, Save Video Pro — see below). Needs a ComfyUI with the native MiniMax H3 nodes. To write the video file: ffmpeg (on PATH, in `FFMPEG_PATH`, or `pip install imageio-ffmpeg`).
 
 ### Nodes (category `bruxosdovfx/SyncTile`)
 | Node | What it does |
@@ -115,6 +128,19 @@ Tile 4096 in stage 1 (means "no tiles"), min_overlap 16, sync_mode "per model ca
 - **ffmpeg error / BrokenPipe:** the node shows ffmpeg's message; without libx265 it writes h264 by itself.
 - **"unexpected keyword argument":** old version installed; delete the old folder and restart.
 
+### Bruxos Media IO nodes (required by the workflow)
+The workflow also uses the **bruxosdovfx Media IO** pack (🧙 input/output nodes). Install it together with SyncTile.
+
+| Node | In workflow v16 | What it does |
+| --- | --- | --- |
+| **🧙 Load Video Pro** | Yes (source video) | Loads the video with `force_rate` (use **24**), `frame_load_cap` (0 = all), `skip_first_frames`, `select_every_nth`, crop/fit, rotate/flip and `pad_grade` **"H3 17n+5"** (fits the frame count to the H3 grid). Outputs: images, video, audio, fps, frame_count, width, height, video_info. SSD cache and higher-bit import options. |
+| **🧙 Load Image** | Yes (reference photo / guide 1) | Loads an image with fit/crop, aspect, rotate and flip. Outputs: image, mask, width, height. |
+| **🧙 Save Video Pro** | Yes (gets IMAGE from Stream Decode) | Writes mp4/h264 and other formats (EXR included), crf/preset, color space, `start_frame` (1001), auto-versioned names, seed in name, burn-in, film grain (e.g. Kodak 5207), review mp4 and a sidecar JSON with render data. |
+| **Load Video** | No | Simple video loader. |
+| **Load EXR** | No | Reads EXR files and sequences with OCIO/ACES color management (ACEScg → sRGB), exposure, layers and data window. |
+| **Hold to Seconds** | No | Holds/extends frames to a duration in seconds (or cuts the excess). |
+| **H3 Frames** | No | Converts duration/frame count to the H3 grid (17n+5), with rounding and fitting (e.g. pingpong). |
+
 ### Background Replace v3 LoRA (summary)
 Experimental merge of **five LoRAs by other authors** for MiniMax H3 (not an original training). File `Background Replace v3.safetensors`, BF16, ~1.91 GB, rank-concatenation merge (no SVD); no metadata (credits live in this README). Components and weights: Facial Realism CloseUp — prithivMLmods (1.0); H3 Character Swap — Akatz Labs (1.0); Realism People — Lovis Odin / fal (1.0); Head Swap v1.0 r32 — Alissonerdx / Alisson Anjos (0.2); VFX Edit v1.0 r128 — Alissonerdx / Alisson Anjos (0.2). Links in the table in the Portuguese section. Base model: [MiniMax H3 — MiniMaxAI](https://huggingface.co/MiniMaxAI/MiniMax-H3). Load from your LoRA folder at strength **1.0**. It mixes FL2VA and REF2VA sources; the name does not guarantee background replacement. The exact Character Swap version is unconfirmed (metadata says v2, deltas resemble v1.5). Structure validated, **not yet tested in generation**. The source models' licenses apply; credits do not imply the authors endorse the merge.
 
@@ -128,7 +154,7 @@ Experimental merge of **five LoRAs by other authors** for MiniMax H3 (not an ori
 ### 安装
 1. 把 `bruxosdovfx-SyncTile` 文件夹复制到 `ComfyUI/custom_nodes/`。如有旧版 `ComfyUI-SyncTile-H3`，请**删除**。
 2. 重启。控制台显示 `[bruxosdovfx • SyncTile] v5.4 carregado`。
-3. 需要带有原生 MiniMax H3 节点的 ComfyUI。写出视频文件需要 ffmpeg（在 PATH 中、设置 `FFMPEG_PATH`，或 `pip install imageio-ffmpeg`）。
+3. 另需安装 **bruxosdovfx Media IO** 节点包（Load Video Pro、Load Image、Save Video Pro，见下文）。需要带有原生 MiniMax H3 节点的 ComfyUI。写出视频文件需要 ffmpeg（在 PATH 中、设置 `FFMPEG_PATH`，或 `pip install imageio-ffmpeg`）。
 
 ### 节点（分类 `bruxosdovfx/SyncTile`）
 | 节点 | 作用 |
@@ -163,6 +189,19 @@ Experimental merge of **five LoRAs by other authors** for MiniMax H3 (not an ori
 - **动作变快 / 音画不同步：** 源视频不是 24 fps。
 - **ffmpeg 报错 / BrokenPipe：** 节点会显示 ffmpeg 的报错信息；缺少 libx265 时会自动改用 h264。
 - **"unexpected keyword argument"：** 安装的是旧版；删除旧文件夹后重启。
+
+### Bruxos Media IO 节点（工作流必需）
+工作流还使用 **bruxosdovfx Media IO** 节点包（🧙 输入/输出节点）。请与 SyncTile 一起安装。
+
+| 节点 | v16 工作流中 | 作用 |
+| --- | --- | --- |
+| **🧙 Load Video Pro** | 是（源视频） | 加载视频：`force_rate`（请用 **24**）、`frame_load_cap`（0 = 全部）、`skip_first_frames`、`select_every_nth`、裁切/适配、旋转/翻转，以及 `pad_grade` **"H3 17n+5"**（把帧数对齐到 H3 网格）。输出：images、video、audio、fps、frame_count、width、height、video_info。支持 SSD 缓存和高位深导入。 |
+| **🧙 Load Image** | 是（参考照片 / 引导 1） | 加载图像，支持适配/裁切、宽高比、旋转和翻转。输出：image、mask、width、height。 |
+| **🧙 Save Video Pro** | 是（接收 Stream Decode 的 IMAGE） | 写出 mp4/h264 及其他格式（含 EXR）、crf/preset、色彩空间、`start_frame`（1001）、文件名自动版本号、文件名含种子、烧录信息、胶片颗粒（如 Kodak 5207）、审片 mp4，以及记录渲染数据的 JSON 附属文件。 |
+| **Load Video** | 否 | 简易视频加载器。 |
+| **Load EXR** | 否 | 读取 EXR 文件和序列，支持 OCIO/ACES 色彩管理（ACEScg → sRGB）、曝光、图层和数据窗口。 |
+| **Hold to Seconds** | 否 | 把帧保持/延长到指定秒数（或裁掉多余部分）。 |
+| **H3 Frames** | 否 | 把时长/帧数换算到 H3 网格（17n+5），支持取整和补齐方式（如 pingpong）。 |
 
 ### Background Replace v3 LoRA（摘要）
 由**其他作者的五个 LoRA** 合并而成的实验性 MiniMax H3 LoRA（并非从零训练）。文件 `Background Replace v3.safetensors`，BF16，约 1.91 GB，按秩拼接合并（无 SVD）；文件不含元数据（署名见本 README）。组成与权重：Facial Realism CloseUp — prithivMLmods（1.0）；H3 Character Swap — Akatz Labs（1.0）；Realism People — Lovis Odin / fal（1.0）；Head Swap v1.0 r32 — Alissonerdx / Alisson Anjos（0.2）；VFX Edit v1.0 r128 — Alissonerdx / Alisson Anjos（0.2）。链接见葡萄牙语部分的表格。基础模型：[MiniMax H3 — MiniMaxAI](https://huggingface.co/MiniMaxAI/MiniMax-H3)。放入 LoRA 文件夹，强度 **1.0**。它混合了 FL2VA 与 REF2VA 来源；名称并不保证能替换背景。Character Swap 的具体版本未确认（元数据为 v2，差值接近 v1.5）。结构已校验，**尚未在生成中测试**。须遵守各源模型的许可；署名不代表原作者认可此合并。
