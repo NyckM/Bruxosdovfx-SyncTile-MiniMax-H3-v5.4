@@ -34,6 +34,8 @@ log = logging.getLogger("SyncTile")
 STRIDE = 16  # MiniMax H3 spatial latent downscale
 MODE_PER_CALL = "per model call"
 MODE_ORIGINAL = "SyncTile original (euler, per step)"
+TEMPORAL_BLEND = "blend windows (joint)"
+TEMPORAL_CARRY = "carry previous frames (sequential)"
 
 
 def _pack(parts):
@@ -172,6 +174,7 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         self.detail_conds = None      # SYNCTILE_CONDS used once sigma drops below detail_sigma
         self.detail_sigma = 0.85
         self.window_frames, self.window_overlap = 0, 39
+        self.temporal_mode, self.carry_frames = TEMPORAL_BLEND, 21
 
     # ---- grid for the latent being sampled
     def _grid(self, latent_shapes):
@@ -281,6 +284,7 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
             self.tiles.append({"box": r["box"], "t": (t0, tn), "a": r.get("a"), "shapes": shapes,
                                "conds": tconds, "conds_detail": dconds,
                                "w3": w3.to(device=device, dtype=torch.float32),
+                               "w2": r["weight"].to(device=device, dtype=torch.float32),
                                "aw": r["aw"].to(device=device, dtype=torch.float32) if r.get("aw") is not None else None})
         self.conds = self.tiles[0]["conds"]  # what generic code paths see; predict_noise uses per-region conds
 
@@ -296,7 +300,12 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         extra_model_options = comfy.model_patcher.create_model_options_clone(self.model_options)
         extra_model_options.setdefault("transformer_options", {})["sample_sigmas"] = sigmas
         extra_args = {"model_options": extra_model_options, "seed": seed}
-        if self.mode == MODE_ORIGINAL:
+        carry = getattr(self, "temporal_mode", TEMPORAL_BLEND) == TEMPORAL_CARRY and n_windows > 1
+        if carry:
+            if self.mode == MODE_ORIGINAL:
+                log.warning("SyncTile: 'carry previous frames' uses the connected sampler; sync_mode original is ignored.")
+            samples = self._sample_carry(noise, latent_image, sampler, sigmas, extra_args, callback, disable_pbar)
+        elif self.mode == MODE_ORIGINAL:
             samples = self._sample_original(noise, latent_image, sigmas, extra_args, callback)
         else:
             executor = comfy.patcher_extension.WrapperExecutor.new_class_executor(
@@ -305,6 +314,112 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                                                          extra_args["model_options"], is_model_options=True))
             samples = executor.execute(self, sigmas, extra_args, callback, noise, latent_image, None, disable_pbar)
         return self.inner_model.process_latent_out(samples.to(torch.float32))
+
+    # ---- sequential windows: each window starts from the finished frames of the previous one
+    def _sample_carry(self, noise, latent_image, sampler, sigmas, extra_args, callback, disable_pbar):
+        """Windows run one after another. The first carry tokens of window k are locked (inpaint mask) to the
+        finished result of window k-1, so the model sees those frames as context and continues from them;
+        the rest of the overlap is cross-faded between the two (consistent) results. Spatial tiles inside a
+        window are still blended at every model call."""
+        full_shapes, all_tiles = self.full_shapes, self.tiles
+        old_ls = getattr(self.inner_model, "latent_shapes", None)
+        windows = sorted({(r["t"], r["a"]) for r in all_tiles}, key=lambda w: w[0][0])
+        carry_tok = 1 + math.ceil((max(1, int(getattr(self, "carry_frames", 21))) - 1) / 4)
+        canvas = [p.clone() for p in _unpack(latent_image, full_shapes)]
+        noise_parts = _unpack(noise, full_shapes)
+        v = full_shapes[0]
+        steps = len(sigmas) - 1
+        prev = None
+
+        def window_slice(parts, t, a):
+            out = [parts[0][:, :, t[0]:t[0] + t[1]]]
+            if len(parts) > 1:
+                out += [p[..., a[0]:a[0] + a[1]] for p in parts[1:]]
+            return out
+
+        try:
+            for k, (t, a) in enumerate(windows):
+                t0, tn = t
+                wshapes = [torch.Size([v[0], v[1], tn, v[3], v[4]])]
+                wshapes += [torch.Size(list(sh[:-1]) + [a[1]]) for sh in full_shapes[1:]]
+                self.tiles = [dict(r, t=(0, tn), a=(0, a[1]) if a else None,
+                                   w3=r["w2"][None].expand(tn, -1, -1),
+                                   aw=torch.ones(a[1], device=r["w2"].device) if a else None)
+                              for r in all_tiles if r["t"] == t]
+                self.full_shapes = wshapes
+                self.inner_model.latent_shapes = wshapes
+                wnoise = _pack(window_slice(noise_parts, t, a))
+                wlat = _pack(window_slice(canvas, t, a))
+                mask, c, ac = None, 0, 0
+                if prev is not None:
+                    (pt0, ptn), pa = prev
+                    ov = max(0, min(tn, pt0 + ptn - t0))
+                    c = min(carry_tok, ov, tn - 1)
+                    mparts = [torch.ones(wshapes[0], dtype=noise.dtype, device=noise.device)]
+                    mparts[0][:, :, :c] = 0
+                    if a:
+                        aov = max(0, pa[0] + pa[1] - a[0])
+                        ac = min(audio_ticks(1 + 4 * (c - 1)), aov) if c > 0 else 0
+                        for sh in wshapes[1:]:
+                            m = torch.ones(sh, dtype=noise.dtype, device=noise.device)
+                            m[..., :ac] = 0
+                            mparts.append(m)
+                    mask = _pack(mparts)
+
+                def cb(i, x0, x, total, t=t, a=a):
+                    if callback is None:
+                        return
+                    full = [p.clone() for p in canvas]
+                    w = _unpack(x0, wshapes)
+                    full[0][:, :, t[0]:t[0] + t[1]] = w[0].to(full[0].dtype)
+                    for j in range(1, len(full)):
+                        full[j][..., a[0]:a[0] + a[1]] = w[j].to(full[j].dtype)
+                    fp = _pack(full)
+                    callback(i, fp, fp, total)
+
+                log.info("SyncTile carry: window %d/%d, frames %d-%d, %d locked tokens (~%d frames) from the previous window",
+                         k + 1, len(windows), 17 * (t0 // 5), 17 * (t0 // 5) + frames_for_tokens(tn) - 1, c,
+                         0 if c == 0 else 1 + 4 * (c - 1))
+                executor = comfy.patcher_extension.WrapperExecutor.new_class_executor(
+                    sampler.sample, sampler,
+                    comfy.patcher_extension.get_all_wrappers(comfy.patcher_extension.WrappersMP.SAMPLER_SAMPLE,
+                                                             extra_args["model_options"], is_model_options=True))
+                wargs = {"model_options": extra_args["model_options"], "seed": extra_args.get("seed")}
+                res = _unpack(executor.execute(self, sigmas, wargs, cb, wnoise, wlat, mask, disable_pbar), wshapes)
+
+                # write back: locked tokens stay, the rest of the overlap cross-fades, the remainder is new
+                if prev is None:
+                    canvas[0][:, :, t0:t0 + tn] = res[0].to(canvas[0].dtype)
+                    for j in range(1, len(canvas)):
+                        canvas[j][..., a[0]:a[0] + a[1]] = res[j].to(canvas[j].dtype)
+                else:
+                    (pt0, ptn), pa = prev
+                    ov = max(0, min(tn, pt0 + ptn - t0))
+                    fade = torch.ones(tn, device=canvas[0].device)
+                    fade[:c] = 0
+                    if ov > c:
+                        fade[c:ov] = torch.linspace(0, 1, ov - c + 2, device=fade.device)[1:-1]
+                    f = fade.view(1, 1, -1, 1, 1).to(canvas[0].dtype)
+                    seg = canvas[0][:, :, t0:t0 + tn]
+                    canvas[0][:, :, t0:t0 + tn] = seg * (1 - f) + res[0].to(seg.dtype) * f
+                    if a:
+                        aov = max(0, pa[0] + pa[1] - a[0])
+                        af = torch.ones(a[1], device=canvas[0].device)
+                        af[:ac] = 0
+                        if aov > ac:
+                            af[ac:aov] = torch.linspace(0, 1, aov - ac + 2, device=af.device)[1:-1]
+                        for j in range(1, len(canvas)):
+                            sg = canvas[j][..., a[0]:a[0] + a[1]]
+                            canvas[j][..., a[0]:a[0] + a[1]] = sg * (1 - af.to(sg.dtype)) + res[j].to(sg.dtype) * af.to(sg.dtype)
+                prev = (t, a)
+                comfy.model_management.throw_exception_if_processing_interrupted()
+        finally:
+            self.tiles, self.full_shapes = all_tiles, full_shapes
+            self.inner_model.latent_shapes = old_ls
+        out = _pack(canvas)
+        if callback is not None:
+            callback(steps - 1, out, out, steps)
+        return out
 
     # ---- shared region loop: run fn on every region, blend video (space x time) and audio (time)
     def _blend_regions(self, x, fn):
@@ -420,6 +535,8 @@ class SyncTileGuider:
                 "window_frames": ("INT", {"default": 0, "min": 0, "max": 3600, "step": 1, "tooltip":
                                   WINDOW_TIP + " Only used with 'positive'; with tile_conditioning the windows come from that node."}),
                 "window_overlap_frames": ("INT", {"default": 39, "min": 5, "max": 1000, "step": 17, "tooltip": OVERLAP_TIP}),
+                "temporal_mode": ([TEMPORAL_BLEND, TEMPORAL_CARRY], {"default": TEMPORAL_BLEND}),
+                "carry_frames": ("INT", {"default": 21, "min": 1, "max": 200, "step": 4}),
             },
         }
 
@@ -431,7 +548,8 @@ class SyncTileGuider:
 
     def get_guider(self, model, tile_width, tile_height, min_overlap, cfg, sync_mode=None, use_refine_seed=False,
                    refine_seed=0, positive=None, negative=None, tile_conditioning=None,
-                   tile_conditioning_detail=None, detail_below_sigma=0.85, window_frames=0, window_overlap_frames=39):
+                   tile_conditioning_detail=None, detail_below_sigma=0.85, window_frames=0, window_overlap_frames=39,
+                   temporal_mode=TEMPORAL_BLEND, carry_frames=21):
         if positive is None and tile_conditioning is None:
             raise ValueError("SyncTile Guider: connect either positive or tile_conditioning.")
         if tile_conditioning_detail is not None:
@@ -446,6 +564,7 @@ class SyncTileGuider:
         g.mode = sync_mode or MODE_PER_CALL
         g.refine_seed = int(refine_seed) if use_refine_seed else None
         g.window_frames, g.window_overlap = int(window_frames or 0), int(window_overlap_frames)
+        g.temporal_mode, g.carry_frames = temporal_mode or TEMPORAL_BLEND, int(carry_frames)
         conds = {"positive": positive if positive is not None else tile_conditioning["conds"][0]}
         if negative is not None and cfg != 1.0:
             conds["negative"] = negative

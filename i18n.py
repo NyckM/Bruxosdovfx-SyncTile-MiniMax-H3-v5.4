@@ -106,6 +106,25 @@ T["SyncTileGuiderH3"] = {
                                                        " Only used with 'positive'; with tile_conditioning the windows come from the Conditioning node.",
                                                        " 仅在使用 positive 时生效；连接 tile_conditioning 时窗口由 Conditioning 节点决定。"))),
     "window_overlap_frames": _WIN_OV,
+    "temporal_mode": ("blend windows (joint): todas as janelas andam juntas e se misturam a cada passo (padrão antigo). "
+                      "carry previous frames (sequential): as janelas rodam uma depois da outra; o começo de cada janela "
+                      "fica preso aos frames já prontos da anterior (o modelo enxerga esses frames e continua a partir "
+                      "deles). Evita fantasma/dupla exposição nas transições e segura melhor o movimento de câmera.",
+                      "blend windows (joint): all windows move together and are blended at every step (old default). "
+                      "carry previous frames (sequential): windows run one after another; the start of each window is "
+                      "locked to the finished frames of the previous one (the model sees them and continues from them). "
+                      "Avoids ghosting/double exposure at the joins and keeps camera motion better.",
+                      "blend windows (joint)：所有窗口同步去噪，每一步都融合（旧默认）。carry previous frames (sequential)："
+                      "窗口依次运行；每个窗口的开头锁定为上一个窗口已完成的帧（模型能看到这些帧并接着生成）。"
+                      "可避免衔接处的重影/双重曝光，更好地保持镜头运动。"),
+    "carry_frames": ("Quantos frames do fim da janela anterior ficam presos no começo da próxima (só no modo carry). "
+                     "Arredonda para o token do H3 (1, 5, 9, 13, 17, 21, 25…). 21 ≈ 0,9 s. Menos = mais liberdade, mais = mais "
+                     "continuidade. Fica limitado pela window_overlap_frames.",
+                     "How many frames from the end of the previous window are locked at the start of the next (carry mode "
+                     "only). Rounds to the H3 token (1, 5, 9, 13, 17, 21, 25…). 21 ≈ 0.9 s. Fewer = more freedom, more = "
+                     "more continuity. Capped by window_overlap_frames.",
+                     "上一个窗口末尾有多少帧会锁定在下一个窗口开头（仅 carry 模式）。按 H3 token 取整（1、5、9、13、17、21、25…）。"
+                     "21 ≈ 0.9 秒。越少越自由，越多越连贯。不超过 window_overlap_frames。"),
 }
 
 # --------------------------------------------------------------------------- SyncTile Ref2VA Conditioning
