@@ -319,15 +319,20 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
 
     # ---- sequential windows: each window starts from the finished frames of the previous one
     def _sample_carry(self, noise, latent_image, sampler, sigmas, extra_args, callback, disable_pbar):
-        """Windows run one after another. The first carry tokens of window k are locked (inpaint mask) to the
-        finished result of window k-1, so the model sees those frames as context and continues from them;
-        the rest of the overlap is cross-faded between the two (consistent) results. Spatial tiles inside a
-        window are still blended at every model call."""
+        """Windows run one after another. The first carry tokens of window k are locked to the finished clean
+        estimate (x0) of the previous windows, RePaint-style (re-noised to the current sigma in predict_noise),
+        so the model sees those frames as context and continues from them; the rest of the overlap is
+        cross-faded. Spatial tiles inside a window are still blended at every model call.
+
+        Two canvases are kept: the sampler state (what SamplerCustomAdvanced returns as `output`) and the clean
+        estimate x0 (its `denoised_output`). They differ whenever the sigmas end above 0 (e.g. SplitSigmas
+        high_sigmas in a first stage); locking and the final x0 always use the clean estimate."""
         full_shapes, all_tiles = self.full_shapes, self.tiles
         old_ls = getattr(self.inner_model, "latent_shapes", None)
         windows = sorted({(r["t"], r["a"]) for r in all_tiles}, key=lambda w: w[0][0])
         carry_tok = 1 + math.ceil((max(1, int(getattr(self, "carry_frames", 21))) - 1) / 4)
-        canvas = [p.clone() for p in _unpack(latent_image, full_shapes)]
+        canvas_x = [p.clone() for p in _unpack(latent_image, full_shapes)]     # sampler state
+        canvas_0 = [p.clone() for p in canvas_x]                                # clean estimate x0
         noise_parts = _unpack(noise, full_shapes)
         v = full_shapes[0]
         steps = len(sigmas) - 1
@@ -338,6 +343,22 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
             if len(parts) > 1:
                 out += [p[..., a[0]:a[0] + a[1]] for p in parts[1:]]
             return out
+
+        def write(canvas, res, t, a, fade, afade):
+            t0, tn = t
+            if fade is None:
+                canvas[0][:, :, t0:t0 + tn] = res[0].to(canvas[0].dtype)
+            else:
+                f = fade.view(1, 1, -1, 1, 1).to(canvas[0].dtype)
+                seg = canvas[0][:, :, t0:t0 + tn]
+                canvas[0][:, :, t0:t0 + tn] = seg * (1 - f) + res[0].to(seg.dtype) * f
+            for j in range(1, len(canvas)):
+                if afade is None:
+                    canvas[j][..., a[0]:a[0] + a[1]] = res[j].to(canvas[j].dtype)
+                else:
+                    sg = canvas[j][..., a[0]:a[0] + a[1]]
+                    af = afade.to(sg.dtype)
+                    canvas[j][..., a[0]:a[0] + a[1]] = sg * (1 - af) + res[j].to(sg.dtype) * af
 
         try:
             for k, (t, a) in enumerate(windows):
@@ -351,14 +372,18 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                 self.full_shapes = wshapes
                 self.inner_model.latent_shapes = wshapes
                 wnoise = _pack(window_slice(noise_parts, t, a))
-                wlat = _pack(window_slice(canvas, t, a))
-                mask, c, ac = None, 0, 0
+                wlat = _pack(window_slice(canvas_0, t, a))            # clean: input latent + finished x0
+                mask, c, ac, fade, afade = None, 0, 0, None, None
                 if prev is not None:
                     (pt0, ptn), pa = prev
                     ov = max(0, min(tn, pt0 + ptn - t0))
                     c = min(carry_tok, ov, tn - 1)
                     mparts = [torch.ones(wshapes[0], dtype=noise.dtype, device=noise.device)]
                     mparts[0][:, :, :c] = 0
+                    fade = torch.ones(tn, device=canvas_x[0].device)
+                    fade[:c] = 0
+                    if ov > c:
+                        fade[c:ov] = torch.linspace(0, 1, ov - c + 2, device=fade.device)[1:-1]
                     if a:
                         aov = max(0, pa[0] + pa[1] - a[0])
                         ac = min(audio_ticks(1 + 4 * (c - 1)), aov) if c > 0 else 0
@@ -366,11 +391,19 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                             m = torch.ones(sh, dtype=noise.dtype, device=noise.device)
                             m[..., :ac] = 0
                             mparts.append(m)
+                        afade = torch.ones(a[1], device=canvas_x[0].device)
+                        afade[:ac] = 0
+                        if aov > ac:
+                            afade[ac:aov] = torch.linspace(0, 1, aov - ac + 2, device=afade.device)[1:-1]
                     mask = _pack(mparts)
+
+                last = {}
+
                 def cb(i, x0, x, total, t=t, a=a):
+                    last["x0"] = x0
                     if callback is None:
                         return
-                    full = [p.clone() for p in canvas]
+                    full = [p.clone() for p in canvas_0]
                     w = _unpack(x0, wshapes)
                     full[0][:, :, t[0]:t[0] + t[1]] = w[0].to(full[0].dtype)
                     for j in range(1, len(full)):
@@ -387,46 +420,26 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                                                              extra_args["model_options"], is_model_options=True))
                 wargs = {"model_options": extra_args["model_options"], "seed": extra_args.get("seed")}
                 # locked tokens are handled RePaint-style in predict_noise: re-noised to the current sigma with the
-                # same noise (consistent with the timestep the model sees) and their prediction pinned to the result
+                # same noise (consistent with the timestep the model sees) and their prediction pinned to x0
                 self._carry = None if mask is None else {"mask": mask, "lat": wlat, "noise": wnoise}
                 try:
-                    res = _unpack(executor.execute(self, sigmas, wargs, cb, wnoise, wlat, None, disable_pbar), wshapes)
+                    res_x = executor.execute(self, sigmas, wargs, cb, wnoise, wlat, None, disable_pbar)
                 finally:
                     self._carry = None
-
-                # write back: locked tokens stay, the rest of the overlap cross-fades, the remainder is new
-                if prev is None:
-                    canvas[0][:, :, t0:t0 + tn] = res[0].to(canvas[0].dtype)
-                    for j in range(1, len(canvas)):
-                        canvas[j][..., a[0]:a[0] + a[1]] = res[j].to(canvas[j].dtype)
-                else:
-                    (pt0, ptn), pa = prev
-                    ov = max(0, min(tn, pt0 + ptn - t0))
-                    fade = torch.ones(tn, device=canvas[0].device)
-                    fade[:c] = 0
-                    if ov > c:
-                        fade[c:ov] = torch.linspace(0, 1, ov - c + 2, device=fade.device)[1:-1]
-                    f = fade.view(1, 1, -1, 1, 1).to(canvas[0].dtype)
-                    seg = canvas[0][:, :, t0:t0 + tn]
-                    canvas[0][:, :, t0:t0 + tn] = seg * (1 - f) + res[0].to(seg.dtype) * f
-                    if a:
-                        aov = max(0, pa[0] + pa[1] - a[0])
-                        af = torch.ones(a[1], device=canvas[0].device)
-                        af[:ac] = 0
-                        if aov > ac:
-                            af[ac:aov] = torch.linspace(0, 1, aov - ac + 2, device=af.device)[1:-1]
-                        for j in range(1, len(canvas)):
-                            sg = canvas[j][..., a[0]:a[0] + a[1]]
-                            canvas[j][..., a[0]:a[0] + a[1]] = sg * (1 - af.to(sg.dtype)) + res[j].to(sg.dtype) * af.to(sg.dtype)
+                res_0 = last.get("x0", res_x)
+                if float(sigmas[-1]) <= 0:
+                    res_0 = res_x                                    # fully denoised: state == x0
+                write(canvas_x, _unpack(res_x, wshapes), t, a, fade, afade)
+                write(canvas_0, _unpack(res_0, wshapes), t, a, fade, afade)
                 prev = (t, a)
                 comfy.model_management.throw_exception_if_processing_interrupted()
         finally:
             self.tiles, self.full_shapes = all_tiles, full_shapes
             self.inner_model.latent_shapes = old_ls
-        out = _pack(canvas)
+        out_x, out_0 = _pack(canvas_x), _pack(canvas_0)
         if callback is not None:
-            callback(steps - 1, out, out, steps)
-        return out
+            callback(steps - 1, out_0, out_x, steps)
+        return out_x
 
     # ---- shared region loop: run fn on every region, blend video (space x time) and audio (time)
     def _blend_regions(self, x, fn):
