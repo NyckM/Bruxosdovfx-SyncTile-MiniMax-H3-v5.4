@@ -2,11 +2,16 @@
 
 **[Português](#português) · [English](#english) · [中文](#中文) · [Referências / References / 参考文献](#referências--references--参考文献)**
 
+https://github.com/user-attachments/assets/d971b4e9-c592-44c4-be8d-7eeab8e1f153
+
 SyncTile: [NyckM/Bruxosdovfx-SyncTile-MiniMax-H3-v5.4](https://github.com/NyckM/Bruxosdovfx-SyncTile-MiniMax-H3-v5.4) · Media IO: [NyckM/Video-Util-ComfYUI](https://github.com/NyckM/Video-Util-ComfYUI) · LoRA: [Background Replace v3](https://huggingface.co/NyckM/Background_Replace_Minimax_H3)
 
 Custom nodes para ComfyUI que levam o MiniMax H3 a 4K e a vídeos longos (testado em 600 frames = 25 s) sem emendar clipes.
 Custom nodes for ComfyUI that take MiniMax H3 to 4K and to long videos (tested at 600 frames = 25 s) without chaining clips.
 让 MiniMax H3 生成 4K 和长视频（已测试 600 帧 = 25 秒）的 ComfyUI 自定义节点，无需拼接片段。
+
+<img width="1802" height="1540" alt="Captura de tela 2026-10-21 180253" src="https://github.com/user-attachments/assets/985a1aad-dd66-4046-8378-889863f7de74" />
+
 
 Cada entrada dos nodes tem uma explicação em PT / EN / 中文: passe o mouse sobre ela no ComfyUI.
 Every node input has a PT / EN / 中文 explanation: hover over it in ComfyUI.
