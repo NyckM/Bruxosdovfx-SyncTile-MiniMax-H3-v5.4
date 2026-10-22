@@ -36,6 +36,7 @@ MODE_PER_CALL = "per model call"
 MODE_ORIGINAL = "SyncTile original (euler, per step)"
 TEMPORAL_BLEND = "blend windows (joint)"
 TEMPORAL_CARRY = "carry previous frames (sequential)"
+TEMPORAL_GUIDE = "guide from previous window (1 frame)"
 
 
 def _pack(parts):
@@ -283,7 +284,7 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
             t0, tn = r["t"]
             w3 = r["tw"].view(-1, 1, 1) * r["weight"][None]
             self.tiles.append({"box": r["box"], "t": (t0, tn), "a": r.get("a"), "shapes": shapes,
-                               "raw": raw, "draw": draw if dconds is not None else None,
+                               "raw": raw, "draw": draw if dconds is not None else None, "src": i,
                                "conds": tconds, "conds_detail": dconds,
                                "w3": w3.to(device=device, dtype=torch.float32),
                                "w2": r["weight"].to(device=device, dtype=torch.float32),
@@ -302,7 +303,7 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         extra_model_options = comfy.model_patcher.create_model_options_clone(self.model_options)
         extra_model_options.setdefault("transformer_options", {})["sample_sigmas"] = sigmas
         extra_args = {"model_options": extra_model_options, "seed": seed}
-        carry = getattr(self, "temporal_mode", TEMPORAL_BLEND) == TEMPORAL_CARRY and n_windows > 1
+        carry = getattr(self, "temporal_mode", TEMPORAL_BLEND) in (TEMPORAL_CARRY, TEMPORAL_GUIDE) and n_windows > 1
         if carry:
             if self.mode == MODE_ORIGINAL:
                 log.warning("SyncTile: 'carry previous frames' uses the connected sampler; sync_mode original is ignored.")
@@ -321,8 +322,8 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
     def _sample_carry(self, noise, latent_image, sampler, sigmas, extra_args, callback, disable_pbar):
         """Windows run one after another. The first carry tokens of window k are locked to the finished clean
         estimate (x0) of the previous windows, RePaint-style (re-noised to the current sigma in predict_noise),
-        so the model sees those frames as context and continues from them; the rest of the overlap is
-        cross-faded. Spatial tiles inside a window are still blended at every model call.
+        so the model sees those frames as context and continues from them; right after them the new window
+        takes over (no cross-fade, which would ghost moving subjects). Spatial tiles inside a window are still blended at every model call.
 
         Two canvases are kept: the sampler state (what SamplerCustomAdvanced returns as `output`) and the clean
         estimate x0 (its `denoised_output`). They differ whenever the sigmas end above 0 (e.g. SplitSigmas
@@ -331,6 +332,7 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         old_ls = getattr(self.inner_model, "latent_shapes", None)
         windows = sorted({(r["t"], r["a"]) for r in all_tiles}, key=lambda w: w[0][0])
         carry_tok = 1 + math.ceil((max(1, int(getattr(self, "carry_frames", 21))) - 1) / 4)
+        guide_mode = getattr(self, "temporal_mode", TEMPORAL_BLEND) == TEMPORAL_GUIDE
         canvas_x = [p.clone() for p in _unpack(latent_image, full_shapes)]     # sampler state
         canvas_0 = [p.clone() for p in canvas_x]                                # clean estimate x0
         noise_parts = _unpack(noise, full_shapes)
@@ -374,16 +376,23 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                 wnoise = _pack(window_slice(noise_parts, t, a))
                 wlat = _pack(window_slice(canvas_0, t, a))            # clean: input latent + finished x0
                 mask, c, ac, fade, afade = None, 0, 0, None, None
-                if prev is not None:
+                if prev is not None and guide_mode:
+                    # the finished frame where this window starts becomes its frame guide (native H3 keyframe);
+                    # the new window takes over from that frame on (hard switch, no cross-fade)
+                    self._guide_window_from(canvas_0, t0, wnoise, wlat, wshapes, a)
+                    fade = torch.ones(tn, device=canvas_x[0].device)
+                    afade = torch.ones(a[1], device=canvas_x[0].device) if a else None
+                elif prev is not None:
                     (pt0, ptn), pa = prev
                     ov = max(0, min(tn, pt0 + ptn - t0))
                     c = min(carry_tok, ov, tn - 1)
                     mparts = [torch.ones(wshapes[0], dtype=noise.dtype, device=noise.device)]
                     mparts[0][:, :, :c] = 0
+                    # hard switch right after the locked frames: the new window was generated *from* them, so
+                    # it continues them; cross-fading the rest of the overlap would mix two different takes
+                    # (double exposure / ghosting when the subject moves)
                     fade = torch.ones(tn, device=canvas_x[0].device)
                     fade[:c] = 0
-                    if ov > c:
-                        fade[c:ov] = torch.linspace(0, 1, ov - c + 2, device=fade.device)[1:-1]
                     if a:
                         aov = max(0, pa[0] + pa[1] - a[0])
                         ac = min(audio_ticks(1 + 4 * (c - 1)), aov) if c > 0 else 0
@@ -393,8 +402,6 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                             mparts.append(m)
                         afade = torch.ones(a[1], device=canvas_x[0].device)
                         afade[:ac] = 0
-                        if aov > ac:
-                            afade[ac:aov] = torch.linspace(0, 1, aov - ac + 2, device=afade.device)[1:-1]
                     mask = _pack(mparts)
 
                 last = {}
@@ -411,9 +418,14 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                     fp = _pack(full)
                     callback(i, fp, fp, total)
 
-                log.info("SyncTile carry: window %d/%d, frames %d-%d, %d locked tokens (~%d frames) from the previous window",
-                         k + 1, len(windows), 17 * (t0 // 5), 17 * (t0 // 5) + frames_for_tokens(tn) - 1, c,
-                         0 if c == 0 else 1 + 4 * (c - 1))
+                if guide_mode:
+                    log.info("SyncTile guide-prev: window %d/%d, frames %d-%d%s", k + 1, len(windows),
+                             17 * (t0 // 5), 17 * (t0 // 5) + frames_for_tokens(tn) - 1,
+                             "" if prev is None else f", frame {17 * (t0 // 5)} of the previous window as guide")
+                else:
+                    log.info("SyncTile carry: window %d/%d, frames %d-%d, %d locked tokens (~%d frames) from the previous window",
+                             k + 1, len(windows), 17 * (t0 // 5), 17 * (t0 // 5) + frames_for_tokens(tn) - 1, c,
+                             0 if c == 0 else 1 + 4 * (c - 1))
                 executor = comfy.patcher_extension.WrapperExecutor.new_class_executor(
                     sampler.sample, sampler,
                     comfy.patcher_extension.get_all_wrappers(comfy.patcher_extension.WrappersMP.SAMPLER_SAMPLE,
@@ -440,6 +452,49 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         if callback is not None:
             callback(steps - 1, out_0, out_x, steps)
         return out_x
+
+    def _guide_window_from(self, canvas_0, t0, wnoise, wlat, wshapes, a):
+        """Decode the finished frame at token t0 (a 1-frame token: frame 17*t0/5), encode it per tile like
+        MiniMax H3 Add Guide and rebuild this window's conds with it as keyframe at local frame 0."""
+        tc = self.tile_conds
+        vae = (tc or {}).get("vae")
+        if tc is None or vae is None:
+            raise ValueError("SyncTile: 'guide from previous window' needs a SyncTile conditioning node with its vae "
+                             "input connected (update the node and reconnect tile_conditioning).")
+        v = canvas_0[0][:, :, t0:t0 + 2]                             # 2 tokens = a valid 5-frame clip
+        lf = getattr(self.inner_model, "latent_format", None)
+        if lf is not None:
+            v = lf.process_out(v)
+        img = vae.decode(v)
+        img = img.reshape((-1,) + tuple(img.shape[-3:]))[:1]           # first frame
+        lat_h, lat_w = tc["canvas"]
+        from comfy_extras.nodes_minimax_h3 import _resize
+        img = _resize(img, lat_w * STRIDE, lat_h * STRIDE, "center")
+        tn = wshapes[0][2]
+        cache = {}
+        for tr in self.tiles:
+            box = tr["box"]
+            if box not in cache:
+                x, y, w, h = (q * STRIDE for q in box)
+                cache[box] = vae.encode(img[:, y:y + h, x:x + w, :])
+            kf = [{"resolved_frame_index": 0, "latent": cache[box]}]
+            loc = {"box": box, "t": (0, tn), "a": (0, a[1]) if a else None}
+            rn, ri = self._crop_pack(wnoise, wshapes, loc), self._crop_pack(wlat, wshapes, loc)
+            raw = {"positive": comfy.sampler_helpers.convert_cond(_with_keyframes(tc["conds"][tr["src"]], kf))}
+            if "negative" in tr["raw"]:
+                raw["negative"] = [c.copy() for c in tr["raw"]["negative"]]
+            tr["conds"] = comfy.samplers.process_conds(self.inner_model, rn, raw, self._device, ri, None, self._seed,
+                                                       latent_shapes=tr["shapes"])
+            if tr.get("draw") is not None and getattr(self, "detail_conds", None) is not None:
+                draw = {"positive": comfy.sampler_helpers.convert_cond(
+                    _with_keyframes(self.detail_conds["conds"][tr["src"]], kf))}
+                if "negative" in raw:
+                    draw["negative"] = [c.copy() for c in raw["negative"]]
+                tr["conds_detail"] = comfy.samplers.process_conds(self.inner_model, rn, draw, self._device, ri, None,
+                                                                  self._seed, latent_shapes=tr["shapes"])
+        mp = getattr(self, "model_patcher", None)
+        if mp is not None and hasattr(mp, "model_size"):                  # the VAE may have pushed the DiT out
+            comfy.model_management.load_models_gpu([mp])
 
     # ---- shared region loop: run fn on every region, blend video (space x time) and audio (time)
     def _blend_regions(self, x, fn):
@@ -564,7 +619,7 @@ class SyncTileGuider:
                 "window_frames": ("INT", {"default": 0, "min": 0, "max": 3600, "step": 1, "tooltip":
                                   WINDOW_TIP + " Only used with 'positive'; with tile_conditioning the windows come from that node."}),
                 "window_overlap_frames": ("INT", {"default": 39, "min": 5, "max": 1000, "step": 17, "tooltip": OVERLAP_TIP}),
-                "temporal_mode": ([TEMPORAL_BLEND, TEMPORAL_CARRY], {"default": TEMPORAL_BLEND}),
+                "temporal_mode": ([TEMPORAL_BLEND, TEMPORAL_CARRY, TEMPORAL_GUIDE], {"default": TEMPORAL_BLEND}),
                 "carry_frames": ("INT", {"default": 21, "min": 1, "max": 200, "step": 4}),
             },
         }
@@ -848,7 +903,7 @@ class SyncTileRef2VAConditioning:
                 per_win.setdefault(r["t"], len(k))
             log.info("SyncTile: %d frame guide(s) at %s; guides per window: %s", len(guide_list),
                      [f for _, f in guide_list], list(per_win.values()))
-        return ({"canvas": (lat_h, lat_w), "T": T, "A": A, "tiles": regions, "conds": conds},)
+        return ({"canvas": (lat_h, lat_w), "T": T, "A": A, "tiles": regions, "conds": conds, "vae": vae},)
 
 
 def _check_shared_keyframes(raw, box, n_windows=1):
@@ -910,7 +965,7 @@ class SyncTileI2VConditioning:
         regions = make_grid(lat_h, lat_w, tile_width, tile_height, min_overlap, T, A,
                             window_frames, window_overlap_frames)
         tw, th = regions[0]["box"][2] * STRIDE, regions[0]["box"][3] * STRIDE
-        out = {"canvas": (lat_h, lat_w), "T": T, "A": A, "tiles": regions}
+        out = {"canvas": (lat_h, lat_w), "T": T, "A": A, "tiles": regions, "vae": vae}
 
         # same geometry as MiniMaxH3ImageToVideo, at canvas size: first = stretch, last = cover-crop
         frames = []
