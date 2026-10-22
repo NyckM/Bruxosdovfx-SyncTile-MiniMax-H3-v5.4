@@ -367,22 +367,6 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                             m[..., :ac] = 0
                             mparts.append(m)
                     mask = _pack(mparts)
-                    # H3 runs masked (locked) tokens at its conditioning timestep only when the conds carry the
-                    # mask, so rebuild this window's conds with it (the sampler then injects those tokens clean)
-                    for tr in self.tiles:
-                        loc = {"box": tr["box"], "t": (0, tn), "a": (0, a[1]) if a else None}
-                        rn = self._crop_pack(wnoise, wshapes, loc)
-                        ri = self._crop_pack(wlat, wshapes, loc)
-                        rm = self._crop_pack(mask, wshapes, loc)
-                        raw = {k2: [c.copy() for c in v2] for k2, v2 in tr["raw"].items()}
-                        tr["conds"] = comfy.samplers.process_conds(self.inner_model, rn, raw, self._device, ri, rm,
-                                                                   self._seed, latent_shapes=tr["shapes"])
-                        if tr.get("draw") is not None:
-                            draw = {k2: [c.copy() for c in v2] for k2, v2 in tr["draw"].items()}
-                            tr["conds_detail"] = comfy.samplers.process_conds(self.inner_model, rn, draw, self._device,
-                                                                              ri, rm, self._seed,
-                                                                              latent_shapes=tr["shapes"])
-
                 def cb(i, x0, x, total, t=t, a=a):
                     if callback is None:
                         return
@@ -402,7 +386,13 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                     comfy.patcher_extension.get_all_wrappers(comfy.patcher_extension.WrappersMP.SAMPLER_SAMPLE,
                                                              extra_args["model_options"], is_model_options=True))
                 wargs = {"model_options": extra_args["model_options"], "seed": extra_args.get("seed")}
-                res = _unpack(executor.execute(self, sigmas, wargs, cb, wnoise, wlat, mask, disable_pbar), wshapes)
+                # locked tokens are handled RePaint-style in predict_noise: re-noised to the current sigma with the
+                # same noise (consistent with the timestep the model sees) and their prediction pinned to the result
+                self._carry = None if mask is None else {"mask": mask, "lat": wlat, "noise": wnoise}
+                try:
+                    res = _unpack(executor.execute(self, sigmas, wargs, cb, wnoise, wlat, None, disable_pbar), wshapes)
+                finally:
+                    self._carry = None
 
                 # write back: locked tokens stay, the rest of the overlap cross-fades, the remainder is new
                 if prev is None:
@@ -506,6 +496,15 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
     def predict_noise(self, x, timestep, model_options={}, seed=None):
         if self.active_tile is not None:  # original mode: x is one region
             return self._run(self.active_tile, x, timestep, model_options, seed)
+        carry = getattr(self, "_carry", None)
+        if carry is not None:
+            m = carry["mask"].to(device=x.device, dtype=x.dtype)
+            lat = carry["lat"].to(device=x.device, dtype=x.dtype)
+            sig = timestep.reshape([timestep.shape[0]] + [1] * (x.ndim - 1)).to(x.dtype)
+            known = self.inner_model.model_sampling.noise_scaling(sig, carry["noise"].to(device=x.device, dtype=x.dtype), lat)
+            x = x * m + known * (1 - m)
+            out = self._blend_regions(x, lambda r, tx: self._run(r, tx, timestep, model_options, seed))
+            return out * m + lat * (1 - m)
         return self._blend_regions(x, lambda r, tx: self._run(r, tx, timestep, model_options, seed))
 
 
