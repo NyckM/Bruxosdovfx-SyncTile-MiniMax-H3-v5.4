@@ -104,23 +104,81 @@ def build(layout, refs, video_index=1, strength=2.0, window=0.2, falloff=0.25, c
     return new, ctx
 
 
-def _sdpa(q, k, v, bias=None):
-    """Exact attention with an optional additive key bias [1,1,1,S]; avoids the dense S x S fallback."""
-    if bias is None:
-        return F.scaled_dot_product_attention(q, k, v)
-    try:
-        from torch.nn.attention import sdpa_kernel, SDPBackend
-        with sdpa_kernel([SDPBackend.EFFICIENT_ATTENTION, SDPBackend.CUDNN_ATTENTION]):
-            return F.scaled_dot_product_attention(q, k, v, attn_mask=bias.expand(q.shape[0], q.shape[1], q.shape[2], -1))
-    except Exception:
-        pass
-    out = torch.empty_like(q)                                  # chunked manual fallback (CPU / old GPUs)
-    scale = q.shape[-1] ** -0.5
-    step = max(1, int(2 ** 28 // max(1, q.shape[2] * k.shape[2])))
-    for h in range(0, q.shape[1], step):
-        s = torch.matmul(q[:, h:h + step].float(), k[:, h:h + step].float().transpose(-1, -2)) * scale + bias.float()
-        out[:, h:h + step] = torch.matmul(torch.softmax(s, dim=-1), v[:, h:h + step].float()).to(q.dtype)
+# ----------------------------------------------------------------------------------------------- fast exact path
+# Decomposition (exact): for a target query, motion-key weights exp(-p) = exp(-cap) + (exp(-p) - exp(-cap)).
+#   base term   : ALL keys, key-only bias (0 for non-motion keys, -cap for motion keys)  -> one attention call
+#   correction  : only the motion keys near that frame's time (where exp(-p) > exp(-cap)), bias log(exp(-p)-exp(-cap))
+# A key-only bias is folded into one extra head dimension (q' = [q, 1/scale], k' = [k, bias]), so both terms run on
+# the fast unmasked kernels (FlashAttention / memory-efficient with log-sum-exp). Results merge with their LSE.
+_PAD = 8
+
+
+def _attn_lse(q, k, v, scale):
+    """(out, lse[B,H,N]) without any mask; tries the fastest kernel available."""
+    if q.is_cuda:
+        if q.dtype in (torch.float16, torch.bfloat16):
+            try:
+                r = torch.ops.aten._scaled_dot_product_flash_attention(q, k, v, 0.0, False, False, scale=scale)
+                return r[0], r[1][..., :q.shape[2]]
+            except Exception:
+                pass
+        try:
+            r = torch.ops.aten._scaled_dot_product_efficient_attention(q, k, v, None, True, 0.0, False, scale=scale)
+            return r[0], r[1][..., :q.shape[2]]
+        except Exception:
+            pass
+    elif q.device.type == "cpu":
+        try:
+            r = torch.ops.aten._scaled_dot_product_flash_attention_for_cpu(q, k, v, 0.0, False, scale=scale)
+            return r[0], r[1]
+        except Exception:
+            pass
+    s = torch.matmul(q.float(), k.float().transpose(-1, -2)) * scale        # small fallback (tests / tiny inputs)
+    lse = torch.logsumexp(s, dim=-1)
+    return torch.matmul(torch.exp(s - lse[..., None]), v.float()).to(q.dtype), lse
+
+
+def _attn_keybias_lse(q, k, v, kbias, scale):
+    """Attention with an additive key-only bias [S] folded into an extra head dimension."""
+    B, H, _, D = q.shape
+    qe = torch.zeros(B, H, q.shape[2], _PAD, dtype=q.dtype, device=q.device)
+    ke = torch.zeros(B, H, k.shape[2], _PAD, dtype=k.dtype, device=k.device)
+    qe[..., 0] = 1.0 / scale
+    ke[..., 0] = kbias.to(k.dtype)
+    ve = torch.zeros(B, H, v.shape[2], _PAD, dtype=v.dtype, device=v.device)
+    out, lse = _attn_lse(torch.cat([q, qe], -1), torch.cat([k, ke], -1), torch.cat([v, ve], -1), scale)
+    return out[..., :D], lse
+
+
+def _merge(parts):
+    lses = torch.stack([p[1].float() for p in parts])
+    L = torch.logsumexp(lses, dim=0)
+    out = sum(torch.exp(p[1].float() - L)[..., None] * p[0].float() for p in parts)
     return out
+
+
+class _Plan:
+    def __init__(self, ctx, device, dtype):
+        kt = ctx.key_t.to(device=device, dtype=torch.float32)
+        km = ctx.motion.to(device)
+        cap = ctx.cap if ctx.strength > 0 else 0.0               # strength 0 = clock alignment only, no bias
+        self.base_bias = torch.where(km, torch.full_like(kt, -cap), torch.zeros_like(kt))
+        rows = torch.nonzero(km).reshape(-1)
+        self.m0, self.m1 = int(rows.min()), int(rows.max()) + 1          # motion rows are one contiguous segment
+        mt = kt[self.m0:self.m1]
+        reach = ctx.window + ctx.falloff * (ctx.cap / ctx.strength) ** 0.5 if ctx.strength > 0 else 0.0
+        self.corr = []
+        for _, _, tf in ctx.frames:
+            d = (mt - tf).abs()
+            near = torch.nonzero(d < reach - 1e-9).reshape(-1) if ctx.cap > 0 and ctx.strength > 0 else d[:0].long()
+            if near.numel() == 0:
+                self.corr.append(None)
+                continue
+            a, b = int(near.min()), int(near.max()) + 1
+            p = torch.clamp(ctx.strength * (torch.clamp(d[a:b] - ctx.window, min=0) / ctx.falloff) ** 2, max=ctx.cap)
+            w = torch.exp(-p) - torch.exp(torch.tensor(-ctx.cap, device=device))
+            logw = torch.where(w > 0, torch.log(w.clamp_min(1e-30)), torch.full_like(w, -1e4))
+            self.corr.append((self.m0 + a, self.m0 + b, logw))
 
 
 def make_override(ctx, previous=None):
@@ -136,15 +194,27 @@ def make_override(ctx, previous=None):
         if not skip_reshape:
             b = q.shape[0]
             q, k, v = (t.view(b, -1, heads, t.shape[-1] // heads).transpose(1, 2) for t in (q, k, v))
+        scale = kwargs.get("scale") or q.shape[-1] ** -0.5
+        key = (q.device, q.dtype)
+        plan = ctx._bias.get(("plan",) + key)
+        if plan is None:
+            plan = ctx._bias[("plan",) + key] = _Plan(ctx, q.device, q.dtype)
         out = torch.empty_like(q)
         ta, tb = ctx.target
         if ta > 0:
-            out[:, :, :ta] = _sdpa(q[:, :, :ta], k, v)
+            out[:, :, :ta] = F.scaled_dot_product_attention(q[:, :, :ta], k, v, scale=scale)
         if tb < n:
-            out[:, :, tb:] = _sdpa(q[:, :, tb:], k, v)
-        biases = ctx.bias(q.device, q.dtype)
+            out[:, :, tb:] = F.scaled_dot_product_attention(q[:, :, tb:], k, v, scale=scale)
+        o_b, l_b = _attn_keybias_lse(q[:, :, ta:tb], k, v, plan.base_bias, scale)
         for i, (s, e, _) in enumerate(ctx.frames):
-            out[:, :, s:e] = _sdpa(q[:, :, s:e], k, v, biases[i].view(1, 1, 1, -1))
+            c = plan.corr[i]
+            qs = slice(s - ta, e - ta)
+            if c is None:
+                out[:, :, s:e] = o_b[:, :, qs].to(q.dtype)
+                continue
+            a, b2, logw = c
+            o_c, l_c = _attn_keybias_lse(q[:, :, s:e], k[:, :, a:b2], v[:, :, a:b2], logw, scale)
+            out[:, :, s:e] = _merge([(o_b[:, :, qs], l_b[:, :, qs]), (o_c, l_c)]).to(q.dtype)
         if skip_output_reshape:
             return out
         return out.transpose(1, 2).reshape(out.shape[0], -1, out.shape[1] * out.shape[3])
