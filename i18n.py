@@ -109,14 +109,14 @@ T["SyncTileGuiderH3"] = {
     "temporal_mode": ("blend windows (joint): todas as janelas andam juntas e se misturam a cada passo (padrão antigo). "
                       "carry previous frames (sequential): as janelas rodam uma depois da outra; o começo de cada janela "
                       "fica preso aos frames já prontos da anterior (o modelo enxerga esses frames e continua a partir "
-                      "deles). guide from previous window (1 frame): janelas em sequência; o frame pronto onde cada janela começa vira o frame-guia (como o Add Guide) da janela seguinte, e a troca é seca nesse frame.",
+                      "deles). guide from previous window (1 frame): janelas em sequência; o frame pronto onde cada janela começa vira o frame-guia (como o Add Guide) da janela seguinte, e a troca é seca nesse frame. guide from previous window (latent clip): igual, mas passa os carry_frames prontos (ex.: 22) direto em latent como um clipe-guia: sem VAE e levando também o movimento (ideia do mo-akkakk).",
                       "blend windows (joint): all windows move together and are blended at every step (old default). "
                       "carry previous frames (sequential): windows run one after another; the start of each window is "
                       "locked to the finished frames of the previous one (the model sees them and continues from them). "
-                      "guide from previous window (1 frame): windows in sequence; the finished frame where each window starts becomes the next window's frame guide (like Add Guide), with a hard switch at that frame.",
+                      "guide from previous window (1 frame): windows in sequence; the finished frame where each window starts becomes the next window's frame guide (like Add Guide), with a hard switch at that frame. guide from previous window (latent clip): same, but the finished carry_frames (e.g. 22) go in directly as a latent guide clip: no VAE round trip and the motion is carried too (idea by mo-akkakk).",
                       "blend windows (joint)：所有窗口同步去噪，每一步都融合（旧默认）。carry previous frames (sequential)："
                       "窗口依次运行；每个窗口的开头锁定为上一个窗口已完成的帧（模型能看到这些帧并接着生成）。"
-                      "guide from previous window (1 frame)：窗口依次运行；每个窗口起始处已完成的帧作为下一个窗口的帧引导（类似 Add Guide），并在该帧处直接切换。"),
+                      "guide from previous window (1 frame)：窗口依次运行；每个窗口起始处已完成的帧作为下一个窗口的帧引导（类似 Add Guide），并在该帧处直接切换。guide from previous window (latent clip)：同上，但直接把已完成的 carry_frames 帧（如 22）以潜变量引导片段传入：无需 VAE，并带上动作（思路来自 mo-akkakk）。"),
     "carry_frames": ("Quantos frames do fim da janela anterior ficam presos no começo da próxima (só no modo carry). "
                      "Arredonda para o token do H3 (1, 5, 9, 13, 17, 21, 25…). 21 ≈ 0,9 s. Menos = mais liberdade, mais = mais "
                      "continuidade. Fica limitado pela window_overlap_frames.",
