@@ -1377,7 +1377,7 @@ class SyncTileStreamDecodeVideo:
             if wav and os.path.exists(wav):
                 os.remove(wav)
 
-        images = keep if keep is not None else torch.zeros((1, 64, 64, 3))
+        images = keep                                  # None when image_output is off (no fake 64x64 frame)
         log.info("SyncTile Stream Decode: %d frames %dx%d%s%s", sink.written, W, H,
                  f" -> {path}" if path else "", f", IMAGE {mode}" if keep is not None else "")
         ui = {"text": notes} if notes else {}

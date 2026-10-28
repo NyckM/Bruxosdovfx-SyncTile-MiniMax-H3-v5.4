@@ -1417,36 +1417,6 @@
      "link": 675
     },
     {
-     "localized_name": "audio_vae",
-     "name": "audio_vae",
-     "shape": 7,
-     "type": "VAE",
-     "link": null
-    },
-    {
-     "localized_name": "ref_image_0",
-     "name": "ref_image_0",
-     "shape": 7,
-     "type": "IMAGE",
-     "link": null
-    },
-    {
-     "localized_name": "ref_video_0",
-     "name": "ref_video_0",
-     "shape": 7,
-     "type": "IMAGE",
-     "link": null
-    },
-    {
-     "localized_name": "length",
-     "name": "length",
-     "type": "INT",
-     "widget": {
-      "name": "length"
-     },
-     "link": null
-    },
-    {
      "localized_name": "model",
      "name": "model",
      "type": "MODEL",
@@ -1511,7 +1481,6 @@
     "previewExposures": []
    },
    "widgets_values": [
-    124,
     3.7
    ],
    "widgets_values_named": {
@@ -3079,7 +3048,7 @@
    231,
    2,
    271,
-   12,
+   8,
    "AUDIO"
   ],
   [
@@ -3367,7 +3336,7 @@
    293,
    1,
    271,
-   9,
+   5,
    "LATENT"
   ],
   [
@@ -3375,7 +3344,7 @@
    289,
    0,
    271,
-   10,
+   6,
    "NOISE"
   ],
   [
@@ -3383,7 +3352,7 @@
    290,
    0,
    271,
-   11,
+   7,
    "SAMPLER"
   ],
   [
@@ -3415,7 +3384,7 @@
    299,
    0,
    271,
-   8,
+   4,
    "MODEL"
   ],
   [
@@ -6052,53 +6021,6 @@
       ]
      },
      {
-      "id": "8042457c-d434-481e-9aa6-2cdd31309049",
-      "name": "audio_vae",
-      "type": "VAE",
-      "linkIds": [],
-      "localized_name": "audio_vae",
-      "shape": 7,
-      "pos": [
-       -564.115234375,
-       4960.087418114395
-      ]
-     },
-     {
-      "id": "4a9641bc-df68-45a0-ac40-4dda4468c6d5",
-      "name": "ref_image_0",
-      "type": "IMAGE",
-      "linkIds": [],
-      "localized_name": "ref_image_0",
-      "shape": 7,
-      "pos": [
-       -564.115234375,
-       4980.087418114395
-      ]
-     },
-     {
-      "id": "4ffbc9d9-8f6d-4f6a-9193-ce20a017967b",
-      "name": "ref_video_0",
-      "type": "IMAGE",
-      "linkIds": [],
-      "localized_name": "ref_video_0",
-      "shape": 7,
-      "pos": [
-       -564.115234375,
-       5000.087418114395
-      ]
-     },
-     {
-      "id": "c42bbef8-e1d2-4b93-81e2-4db7add92e97",
-      "name": "length",
-      "type": "INT",
-      "linkIds": [],
-      "localized_name": "length",
-      "pos": [
-       -564.115234375,
-       5020.087418114395
-      ]
-     },
-     {
       "id": "94a41a53-c124-419c-97ed-e83d9c2462f5",
       "name": "model",
       "type": "MODEL",
@@ -7170,7 +7092,7 @@
      {
       "id": 670,
       "origin_id": -10,
-      "origin_slot": 8,
+      "origin_slot": 4,
       "target_id": 255,
       "target_slot": 0,
       "type": "MODEL"
@@ -7178,7 +7100,7 @@
      {
       "id": 668,
       "origin_id": -10,
-      "origin_slot": 9,
+      "origin_slot": 5,
       "target_id": 171,
       "target_slot": 1,
       "type": "LATENT"
@@ -7186,7 +7108,7 @@
      {
       "id": 669,
       "origin_id": -10,
-      "origin_slot": 10,
+      "origin_slot": 6,
       "target_id": 261,
       "target_slot": 0,
       "type": "NOISE"
@@ -7194,7 +7116,7 @@
      {
       "id": 666,
       "origin_id": -10,
-      "origin_slot": 11,
+      "origin_slot": 7,
       "target_id": 261,
       "target_slot": 2,
       "type": "SAMPLER"
@@ -7202,7 +7124,7 @@
      {
       "id": 517,
       "origin_id": -10,
-      "origin_slot": 12,
+      "origin_slot": 8,
       "target_id": 237,
       "target_slot": 2,
       "type": "AUDIO"
@@ -7234,7 +7156,7 @@
      {
       "id": 691,
       "origin_id": -10,
-      "origin_slot": 13,
+      "origin_slot": 9,
       "target_id": 169,
       "target_slot": 3,
       "type": "FLOAT"
