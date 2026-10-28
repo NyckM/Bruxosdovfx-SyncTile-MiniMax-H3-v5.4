@@ -274,6 +274,11 @@ T["SyncTileStreamDecodeVideoH3"] = {
                      "and says so; the file is written anyway.",
                      "同时以 IMAGE 输出帧（例如接 Save Video Pro）。占用内存：帧数 x 宽 x 高 x 12 字节"
                      "（600 帧 2208x2848 ≈ 45 GB；half = 1/4）。内存不够时会降为 half，再降为 off 并提示；文件照常写入。"),
+    "_out_video": ("Saída VIDEO: o arquivo gravado como VIDEO, lido do disco. Ligue no RH DLSS5 Enhance (entrada video) "
+                   "para pós-processar sem carregar o vídeo na RAM.",
+                   "VIDEO output: the written file as a VIDEO read from disk. Connect it to RH DLSS5 Enhance (video input) "
+                   "to post-process without loading the video in RAM.",
+                   "VIDEO 输出：以 VIDEO 形式读取已写出的文件。接到 RH DLSS5 Enhance 的 video 输入，可在不占用内存的情况下做后处理。"),
     "write_video": ("Grava o arquivo de vídeo. Desligado = só a saída IMAGE (sem ffmpeg).",
                     "Write the video file. Off = only the IMAGE output (no ffmpeg).",
                     "写出视频文件。关闭 = 只输出 IMAGE（不调用 ffmpeg）。"),
@@ -449,6 +454,14 @@ def apply(mappings):
             continue
         if "_desc" in tips:
             cls.DESCRIPTION = tooltip(*tips["_desc"])
+        outs = [k[5:] for k in tips if k.startswith("_out_")]
+        if outs and hasattr(cls, "RETURN_NAMES"):
+            ot = list(getattr(cls, "OUTPUT_TOOLTIPS", ("",) * len(cls.RETURN_NAMES)))
+            ot += [""] * (len(cls.RETURN_NAMES) - len(ot))
+            for o in outs:
+                if o in cls.RETURN_NAMES:
+                    ot[cls.RETURN_NAMES.index(o)] = tooltip(*tips["_out_" + o])
+            cls.OUTPUT_TOOLTIPS = tuple(ot)
         original = cls.INPUT_TYPES.__func__
 
         def wrapped(c, _orig=original, _tips=tips):

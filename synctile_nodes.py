@@ -1254,8 +1254,11 @@ class SyncTileStreamDecodeVideo:
             },
         }
 
-    RETURN_TYPES = ("STRING", "IMAGE")
-    RETURN_NAMES = ("filepath", "images")
+    RETURN_TYPES = ("STRING", "IMAGE", "VIDEO")
+    RETURN_NAMES = ("filepath", "images", "video")
+    OUTPUT_TOOLTIPS = ("Path of the written file.", "Frames as IMAGE (only with image_output on).",
+                       "The written file as VIDEO (file-backed: nodes like RH DLSS5 Enhance stream it in chunks "
+                       "instead of loading it in RAM). None when write_video is off.")
     FUNCTION = "decode"
     OUTPUT_NODE = True
     CATEGORY = "bruxosdovfx/SyncTile"
@@ -1380,7 +1383,21 @@ class SyncTileStreamDecodeVideo:
         ui = {"text": notes} if notes else {}
         if path:
             ui.update({"images": [{"filename": filename, "subfolder": subfolder, "type": "output"}], "animated": (True,)})
-        return {"ui": ui, "result": (path, images)}
+        return {"ui": ui, "result": (path, images, _video_from_file(path) if path else None)}
+
+
+def _video_from_file(path):
+    """File-backed VIDEO for the written file (streamed by consumers that read get_stream_source())."""
+    try:
+        from comfy_api.latest import InputImpl
+        return InputImpl.VideoFromFile(path)
+    except Exception:
+        try:
+            from comfy_api.input_impl import VideoFromFile
+            return VideoFromFile(path)
+        except Exception as e:                          # very old ComfyUI without the VIDEO type
+            log.warning("SyncTile Stream Decode: no VIDEO type in this ComfyUI (%s); video output is None", e)
+            return None
 
 
 NODE_CLASS_MAPPINGS = {
