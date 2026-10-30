@@ -2,7 +2,7 @@ import logging
 
 from .synctile_nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 
-__version__ = "6.2.0"
+__version__ = "6.3.0"
 logging.getLogger("SyncTile").info("SyncTile H3 nodes v%s loaded (space x time regions, long video, stream decode)", __version__)
 print(f"[bruxosdovfx • SyncTile] v{__version__} carregado")
 

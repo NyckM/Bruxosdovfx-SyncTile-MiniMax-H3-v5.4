@@ -1,4 +1,4 @@
-# bruxosdovfx • SyncTile (MiniMax H3) — v6.2
+# bruxosdovfx • SyncTile (MiniMax H3) — v6.3
 
 **[Português](#português) · [English](#english) · [中文](#中文) · [Referências / References / 参考文献](#referências--references--参考文献)**
 
@@ -273,9 +273,10 @@ Experimental merge of **five LoRAs by other authors** for MiniMax H3 (not an ori
 
 **中文：** `bruxosdovfx • Background Plate 3D (MoGe, experimental)`，思路同 CrossView-Warp：ComfyUI 原生 MoGe 给出源视频和新背景照片的深度；跟踪的背景点提升为 3D，求出真实镜头的旋转和平移（关键帧 PnP，无累积漂移）；照片变成带深度的网格并从该镜头渲染，产生视差。可与现有的 LoRA 和模型一起使用（无需额外 LoRA）。
 
-## Novidades / What's new / 新功能 (v5.6 – v6.2)
+## Novidades / What's new / 新功能 (v5.6 – v6.3)
 
 **PT**
+- **FreeNoise no modo blend windows (v6.3).** Novo `freenoise` no SyncTile Guider: a parte nova de cada janela começa de uma cópia embaralhada do ruído da janela anterior (Qiu et al., *FreeNoise*, ICLR 2024), menos fantasma na emenda e menos deriva. Mesma ideia do node nativo MiniMax H3 Context Windows do Kijai ([ComfyUI PR #17425](https://github.com/Comfy-Org/ComfyUI/pull/17425)). Workflow `minimaxH3_v31_FastH3_blend_FreeNoise.json`.
 - **Saída VIDEO no Stream Decode + DLSS 5 como pós-processo (v6.2).** O Stream Decode agora também entrega o arquivo gravado como `VIDEO` (lido do disco). Ligado no [RH DLSS5 Enhance](https://github.com/RH-RunningHub/ComfyUI-RH-DLSS5), ele processa em blocos e grava em streaming: 600 frames 2K → 4K sem estourar a RAM. Workflows `minimaxH3_v30_Regenerate2K_SyncTile_DLSS5.json` e `minimaxH3_v30b_HIBRIDO_Regenerate2K_DLSS5.json`.
 - **Open-H3 Regenerate 2K no SyncTile (v29).** Refino em 3 passos (0.909375 / 0.857143 / 0.666667 / 0) com o modelo fl2va + LoRA Regenerate, em tiles × janelas de 124 frames; TARA desligado.
 - **Atenção temporal à referência — TARA-H3 (v6.0).** Método de **Alisson Anjos** ([relatório técnico TARA-H3 v0.1.2, 2026](https://github.com/alisson-anjos/ai-toolkit/tree/tara-h3-v0.1.2/research/tara-h3)). O relógio (RoPE temporal) do vídeo de referência `<Video 1>` é alinhado com o vídeo gerado e cada frame gerado é levemente penalizado ao olhar frames distantes da referência: movimento, boca e ritmo seguem a referência com mais precisão. No SyncTile Guider: `temporal_reference = true` (+ `tara_strength`, `tara_window_seconds`, `tara_falloff_seconds`, `tara_max_penalty`, `tara_motion_video`). A nossa versão (`tara.py`) foi escrita a partir do relatório, sem copiar código dos repositórios dele; funciona por tile/janela e aceita frames-guia (pula as linhas de keyframe), então combina com o modo "frame anterior como guia". O node original dele é o [ComfyUI-BFSNodes](https://github.com/alisson-anjos/ComfyUI-BFSNodes/tree/feat/h3-native-temporal) (GPL-3.0) — use um ou outro, não os dois. Workflows: `minimaxH3_v26_VID2VID_TARA_FastH3.json`, `..._T2V_...`, `..._I2V_...`.
@@ -285,6 +286,7 @@ Experimental merge of **five LoRAs by other authors** for MiniMax H3 (not an ori
 - **Background Plate 2D e 3D — experimental (v5.8/v5.9).** Mede o movimento real da câmera no fundo do vídeo fonte e aplica na foto do novo fundo; a versão 3D usa a profundidade do MoGe e renderiza com paralaxe (ideia do [CrossView-Warp](https://huggingface.co/Cseti/MiniMax-H3_Ref2VA-LoRA-CrossView-Warp_v1) do Cseti e do [Meridian](https://huggingface.co/Viggle/Meridian) da Viggle, sem os LoRAs deles).
 
 **EN**
+- **FreeNoise in blend-windows mode (v6.3):** new `freenoise` on SyncTile Guider (FreeNoise, ICLR 2024; same idea as Kijai's native MiniMax H3 Context Windows, ComfyUI PR #17425).
 - **Stream Decode VIDEO output + DLSS 5 post-process (v6.2).** Stream Decode also outputs the written file as a file-backed `VIDEO`; [RH DLSS5 Enhance](https://github.com/RH-RunningHub/ComfyUI-RH-DLSS5) streams it in chunks (600 frames 2K → 4K without filling RAM). Open-H3 Regenerate 2K inside SyncTile (v29/v30).
 - **Temporal reference attention — TARA-H3 (v6.0).** Method by **Alisson Anjos** ([TARA-H3 technical report v0.1.2, 2026](https://github.com/alisson-anjos/ai-toolkit/tree/tara-h3-v0.1.2/research/tara-h3)). The reference video's temporal RoPE clock is aligned with the output and generated frames are softly penalised for attending to distant reference frames, so motion, mouth and timing follow the reference more closely. On SyncTile Guider: `temporal_reference = true` (+ `tara_*` settings). Our `tara.py` was written from the report, with no code copied from his repositories; it works per tile/window and accepts frame guides (keyframe rows are skipped), so it combines with "guide from previous window". His original node is [ComfyUI-BFSNodes](https://github.com/alisson-anjos/ComfyUI-BFSNodes/tree/feat/h3-native-temporal) (GPL-3.0) — use one or the other, not both.
 - **`guide from previous window (1 frame)`** temporal mode (v5.6); carry mode now switches hard (no double exposure).
@@ -292,6 +294,7 @@ Experimental merge of **five LoRAs by other authors** for MiniMax H3 (not an ori
 - **Background Plate 2D / 3D — experimental** (v5.8/v5.9): real camera motion from the source background applied to the new background photo; the 3D version uses MoGe depth and renders with parallax (CrossView-Warp / Meridian idea, without their LoRAs).
 
 **中文**
+- **blend windows 模式下的 FreeNoise（v6.3）：** SyncTile Guider 新增 `freenoise`（FreeNoise，ICLR 2024；与 Kijai 的原生 MiniMax H3 Context Windows，ComfyUI PR #17425 思路相同）。
 - **流式解码 VIDEO 输出 + DLSS 5 后处理（v6.2）。** 流式解码把写出的文件作为基于文件的 `VIDEO` 输出；[RH DLSS5 Enhance](https://github.com/RH-RunningHub/ComfyUI-RH-DLSS5) 分块读取（600 帧 2K → 4K，不占满内存）。SyncTile 中的 Open-H3 Regenerate 2K（v29/v30）。
 - **参考时间注意力 — TARA-H3（v6.0）。** 方法作者 **Alisson Anjos**（[TARA-H3 技术报告 v0.1.2，2026](https://github.com/alisson-anjos/ai-toolkit/tree/tara-h3-v0.1.2/research/tara-h3)）。把参考视频的时间 RoPE 与输出对齐，并在注意力中轻罚生成帧关注参考视频中较远的帧，使动作、口型和节奏更贴近参考。在 SyncTile Guider 中设 `temporal_reference = true`。我们的 `tara.py` 依据报告独立实现，未复制其仓库代码；按图块/窗口工作并兼容帧引导。其原始节点为 [ComfyUI-BFSNodes](https://github.com/alisson-anjos/ComfyUI-BFSNodes/tree/feat/h3-native-temporal)（GPL-3.0），二者择一使用。
 - **`guide from previous window (1 frame)`** 时间模式（v5.6）；carry 模式改为直接切换（无重影）。

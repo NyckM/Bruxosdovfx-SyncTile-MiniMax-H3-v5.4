@@ -147,6 +147,16 @@ T["SyncTileGuiderH3"] = {
     "tara_max_penalty": ("Penalidade máxima (teto). Padrão 6.0; frames distantes continuam visíveis, só pesam menos.",
                          "Maximum penalty (cap). Default 6.0; distant frames stay visible, they just weigh less.",
                          "最大惩罚（上限）。默认 6.0；远处的帧仍可见，只是权重更低。"),
+    "freenoise": ("FreeNoise (modo blend windows): a parte nova de cada janela recebe uma cópia embaralhada do ruído do início da "
+                  "janela anterior, então as janelas sobrepostas começam de ruído parecido e concordam mais cedo: menos mescla/"
+                  "fantasma na emenda e menos deriva em vídeos longos. Mesma ideia do MiniMax H3 Context Windows nativo (Kijai, "
+                  "PR #17425). Não age nos modos sequenciais (guide/carry).",
+                  "FreeNoise (blend windows mode): the new part of each window gets a shuffled copy of the previous window's "
+                  "leading noise, so overlapping windows start from similar noise and agree sooner: less ghosting at the joins "
+                  "and less drift on long videos. Same idea as the native MiniMax H3 Context Windows (Kijai, PR #17425). No "
+                  "effect in the sequential modes (guide/carry).",
+                  "FreeNoise（blend windows 模式）：每个窗口新增的部分使用上一窗口开头噪声的打乱副本，使重叠窗口从相似噪声出发、更早达成一致："
+                  "接缝处重影更少，长视频漂移更少。与原生 MiniMax H3 Context Windows（Kijai，PR #17425）思路相同。对顺序模式（guide/carry）无效。"),
     "tara_motion_video": ("Qual <Video N> é a referência de movimento (normalmente 1).",
                           "Which <Video N> is the motion reference (usually 1).", "哪个 <Video N> 是动作参考（通常为 1）。"),
 }

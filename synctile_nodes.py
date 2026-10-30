@@ -160,6 +160,21 @@ def make_grid(lat_h, lat_w, tile_px_w, tile_px_h, min_overlap, T=None, A=None, w
     return regions
 
 
+def freenoise_spans(noise, dim, spans, seed):
+    """FreeNoise (Qiu et al., ICLR 2024) over our own windows: the new part of each window reuses a shuffled copy
+    of the previous window's leading noise, so overlapping windows start from correlated noise and agree sooner.
+    spans: [(start, length)] in order along `dim`. Edits `noise` in place and returns it."""
+    gen = torch.Generator(device="cpu").manual_seed(int(seed) & 0xFFFFFFFFFFFFFFFF)
+    for (p0, pn), (s0, sn) in zip(spans, spans[1:]):
+        place, end = p0 + pn, min(s0 + sn, noise.shape[dim])
+        d = min(end - place, s0 - p0)
+        if d <= 0:
+            continue
+        src = torch.randperm(d, generator=gen) + p0
+        noise.narrow(dim, place, d).copy_(noise.index_select(dim, src.to(noise.device)))
+    return noise
+
+
 def region_frames(r):
     """Pixel frames covered by a region: (first_frame, frame_count)."""
     t0, tn = r.get("t", (0, None)) if r.get("t") else (0, None)
@@ -257,6 +272,18 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         finally:
             comfy.sampler_helpers.prepare_sampling = original
 
+    def _freenoise(self, noise, latent_shapes, seed):
+        tspans = sorted({r["t"] for r in self.grid if r.get("t")})
+        aspans = sorted({r["a"] for r in self.grid if r.get("a")})
+        multi = latent_shapes is not None and len(latent_shapes) > 1
+        parts = comfy.utils.unpack_latents(noise, latent_shapes) if multi else [noise]
+        parts = [p.clone() for p in parts]
+        freenoise_spans(parts[0], 2, tspans, seed)
+        if multi and len(aspans) == len(tspans):
+            freenoise_spans(parts[1], parts[1].ndim - 1, aspans, seed + 1)
+        log.info("SyncTile: FreeNoise over %d windows (video%s)", len(tspans), " + audio" if multi and aspans else "")
+        return comfy.utils.pack_latents(parts)[0] if multi else parts[0]
+
     # ---- process the conditioning once per region, at region size
     def inner_sample(self, noise, latent_image, device, sampler, sigmas, denoise_mask, callback, disable_pbar,
                      seed, latent_shapes=None):
@@ -305,6 +332,9 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         if self.refine_seed is not None:
             gen = torch.Generator().manual_seed(self.refine_seed)
             noise = torch.randn(noise.shape, generator=gen, dtype=torch.float32).to(noise.device, noise.dtype)
+        temporal_mode = getattr(self, "temporal_mode", TEMPORAL_BLEND)
+        if getattr(self, "freenoise", False) and n_windows > 1 and temporal_mode == TEMPORAL_BLEND:
+            noise = self._freenoise(noise, latent_shapes, seed)
         n_tiles = len(self.tiles) // max(1, n_windows)
         log.info("SyncTile: %d regions (%d tiles x %d windows) on a %dx%d canvas, %d frames, mode=%s, noise=%s",
                  len(self.tiles), n_tiles, n_windows, latent_shapes[0][4] * STRIDE, latent_shapes[0][3] * STRIDE,
@@ -698,6 +728,7 @@ class SyncTileGuider:
                 "tara_falloff_seconds": ("FLOAT", {"default": 0.25, "min": 0.01, "max": 10.0, "step": 0.01}),
                 "tara_max_penalty": ("FLOAT", {"default": 6.0, "min": 0.0, "max": 30.0, "step": 0.1}),
                 "tara_motion_video": ("INT", {"default": 1, "min": 1, "max": 8}),
+                "freenoise": ("BOOLEAN", {"default": False}),
             },
         }
 
@@ -711,7 +742,8 @@ class SyncTileGuider:
                    refine_seed=0, positive=None, negative=None, tile_conditioning=None,
                    tile_conditioning_detail=None, detail_below_sigma=0.85, window_frames=0, window_overlap_frames=39,
                    temporal_mode=TEMPORAL_BLEND, carry_frames=21, temporal_reference=False, tara_strength=2.0,
-                   tara_window_seconds=0.2, tara_falloff_seconds=0.25, tara_max_penalty=6.0, tara_motion_video=1):
+                   tara_window_seconds=0.2, tara_falloff_seconds=0.25, tara_max_penalty=6.0, tara_motion_video=1,
+                   freenoise=False):
         if positive is None and tile_conditioning is None:
             raise ValueError("SyncTile Guider: connect either positive or tile_conditioning.")
         if tile_conditioning_detail is not None:
@@ -727,6 +759,7 @@ class SyncTileGuider:
         g.refine_seed = int(refine_seed) if use_refine_seed else None
         g.window_frames, g.window_overlap = int(window_frames or 0), int(window_overlap_frames)
         g.temporal_mode, g.carry_frames = temporal_mode or TEMPORAL_BLEND, int(carry_frames)
+        g.freenoise = bool(freenoise)
         if temporal_reference:
             if model.model_options.get("bfs_h3_native_temporal_v1"):
                 raise ValueError("SyncTile: temporal_reference (TARA) is on here and the BFS native temporal node is also on "
