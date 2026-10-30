@@ -1632,7 +1632,7 @@
      ]
     }
    ],
-   "title": "Estágio 2: latent upscale 3D (megapixels: 6 ≈ 4K vertical/2K+; 8.3 = 4K 16:9)",
+   "title": "Estágio 2: latent upscale 3D → 3.7 MP (2560×1440 em 16:9). Mais detalhe: 6 (≈3× mais lento)",
    "properties": {
     "aux_id": "LBH-123-AI/Comfyui_Minimax_h3_latent_Upscaler",
     "ver": "40316cf008b2fd8663263270669eb4da23f89d2c",
@@ -1646,7 +1646,7 @@
    "widgets_values": [
     "minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
     "megapixels",
-    6,
+    3.7,
     32,
     true,
     false,
@@ -1971,8 +1971,8 @@
     3840,
     2160,
     124,
-    1472,
-    896,
+    1408,
+    864,
     16,
     "crop",
     "match",
@@ -2238,8 +2238,8 @@
     "Node name for S&R": "SyncTileGuiderH3"
    },
    "widgets_values": [
-    1472,
-    896,
+    1408,
+    864,
     16,
     1,
     "per model call",
@@ -2637,7 +2637,7 @@
     "Node name for S&R": "Note"
    },
    "widgets_values": [
-    "Pika H3 Flex Ref2VA × SyncTile · bruxosdovfx\nPT\n• Estágio 1: o mesmo Pika H3 Flex (modelo minimax_h3_ref2va_pruned_int8_convrot.safetensors + LoRA pika_h3_flex_ref2va_v1_bf16.safetensors, lcm, 6 passos 1.0→0), agora pelo SyncTile: janelas de 124 frames com clipe-guia latente, então a Duração pode passar de 5 s (ex.: 25 s = 600 frames).\n• Estágio 2: upscale 3D do latent (6 MP) + refino SyncTile em tiles sincronizados com a cauda do schedule do Pika (0.8 / 0.571 / 0.333 / 0) e o mesmo LoRA; Stream Decode grava o arquivo direto (h265 10-bit) com o áudio gerado.\n• As imagens <Picture 1>/<Picture 2> vão para as duas condições; no estágio 2 cada tile vê o recorte correspondente (ref_video_mode crop).\n• TARA desligado. Precisa: bruxosdovfx-SyncTile ≥ 6.2, latent upscaler 3D (LBH-123-AI).\n• Para ir mais rápido: megapixels do upscale 3.7 (2K) em vez de 6.\nEN: Pika H3 Flex Ref2VA converted to SyncTile: stage 1 SyncTile (~1 MP, 124-frame windows, latent guide clip, Pika lcm 6-step schedule), stage 2 3D latent upscale + synced-tile refine (Pika schedule tail) + stream decode. TARA off.\n中文：Pika H3 Flex Ref2VA 改为 SyncTile：第一阶段 SyncTile（约 1 MP，124 帧窗口，潜变量引导片段，Pika lcm 6 步），第二阶段 3D 潜空间放大 + 同步图块精修（Pika 调度尾段）+ 流式解码。TARA 关闭。\nPika: https://github.com/Pika-Labs/Pika-H3-Flex"
+    "Pika H3 Flex Ref2VA × SyncTile · bruxosdovfx\nPT\n• Estágio 1: o mesmo Pika H3 Flex (modelo minimax_h3_ref2va_pruned_int8_convrot.safetensors + LoRA pika_h3_flex_ref2va_v1_bf16.safetensors, lcm, 6 passos 1.0→0), agora pelo SyncTile: janelas de 124 frames com clipe-guia latente, então a Duração pode passar de 5 s (ex.: 25 s = 600 frames).\n• Estágio 2: upscale 3D do latent (6 MP) + refino SyncTile em tiles sincronizados com a cauda do schedule do Pika (0.8 / 0.571 / 0.333 / 0) e o mesmo LoRA; Stream Decode grava o arquivo direto (h265 10-bit) com o áudio gerado.\n• As imagens <Picture 1>/<Picture 2> vão para as duas condições; no estágio 2 cada tile vê o recorte correspondente (ref_video_mode crop).\n• TARA desligado. Precisa: bruxosdovfx-SyncTile ≥ 6.2, latent upscaler 3D (LBH-123-AI).\n• Estágio 2 rápido: 3.7 MP (2560×1440) com tiles 1408×864 = só 4 tiles (2×2), ~2,5× mais rápido que 6 MP com 9 tiles. Vídeo VERTICAL: troque os tiles do estágio 2 para 864×1408. Para 4K: DLSS5 1.5x depois, ou upscale 6 MP (lento).\nEN: Pika H3 Flex Ref2VA converted to SyncTile: stage 1 SyncTile (~1 MP, 124-frame windows, latent guide clip, Pika lcm 6-step schedule), stage 2 3D latent upscale + synced-tile refine (Pika schedule tail) + stream decode. TARA off.\n中文：Pika H3 Flex Ref2VA 改为 SyncTile：第一阶段 SyncTile（约 1 MP，124 帧窗口，潜变量引导片段，Pika lcm 6 步），第二阶段 3D 潜空间放大 + 同步图块精修（Pika 调度尾段）+ 流式解码。TARA 关闭。\nPika: https://github.com/Pika-Labs/Pika-H3-Flex"
    ],
    "title": "LEIA-ME",
    "color": "#432",
