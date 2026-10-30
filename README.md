@@ -1,17 +1,12 @@
-# bruxosdovfx • SyncTile (MiniMax H3) — v5.5
+# bruxosdovfx • SyncTile (MiniMax H3) — v6.3
 
 **[Português](#português) · [English](#english) · [中文](#中文) · [Referências / References / 参考文献](#referências--references--参考文献)**
-
-https://github.com/user-attachments/assets/d971b4e9-c592-44c4-be8d-7eeab8e1f153
 
 SyncTile: [NyckM/Bruxosdovfx-SyncTile-MiniMax-H3-v5.4](https://github.com/NyckM/Bruxosdovfx-SyncTile-MiniMax-H3-v5.4) · Media IO: [NyckM/Video-Util-ComfYUI](https://github.com/NyckM/Video-Util-ComfYUI) · LoRA: [Background Replace v3](https://huggingface.co/NyckM/Background_Replace_Minimax_H3)
 
 Custom nodes para ComfyUI que levam o MiniMax H3 a 4K e a vídeos longos (testado em 600 frames = 25 s) sem emendar clipes.
 Custom nodes for ComfyUI that take MiniMax H3 to 4K and to long videos (tested at 600 frames = 25 s) without chaining clips.
 让 MiniMax H3 生成 4K 和长视频（已测试 600 帧 = 25 秒）的 ComfyUI 自定义节点，无需拼接片段。
-
-<img width="1802" height="1540" alt="Captura de tela 2026-10-21 180253" src="https://github.com/user-attachments/assets/985a1aad-dd66-4046-8378-889863f7de74" />
-
 
 Cada entrada dos nodes tem uma explicação em PT / EN / 中文: passe o mouse sobre ela no ComfyUI.
 Every node input has a PT / EN / 中文 explanation: hover over it in ComfyUI.
@@ -254,6 +249,58 @@ Experimental merge of **five LoRAs by other authors** for MiniMax H3 (not an ori
 
 ---
 
+## Rostos pequenos / Small faces / 小脸 (SAM 3.1) — v5.9
+
+**PT:** Dois nodes novos, `bruxosdovfx • Face Crop (SAM 3.1)` e `bruxosdovfx • Face Stitch` (baseados no Tracked Crop/Stitch e no FaceStitchUpscale da Bruxos). O SAM 3.1 nativo do ComfyUI (`Run SAM3 Video Track` → `SAM3 Track to Mask`, prompt `face`) segue o rosto; o Face Crop amplia o rosto para um quadrado de 768 px em todos os frames; o H3 refaz só o rosto com uma **referência de rosto** (`<Picture 1>`) e o áudio para a boca; o Face Stitch cola de volta só a silhueta do rosto, com cor casada. Modelo: [`sam3.1_multiplex_fp16.safetensors`](https://huggingface.co/Comfy-Org/sam3.1) em `models/checkpoints/`. Workflow: `minimaxH3BackgroundSwap_v22_rosto_SAM31.json`.
+
+**EN:** Two new nodes, `bruxosdovfx • Face Crop (SAM 3.1)` and `bruxosdovfx • Face Stitch` (based on the Bruxos Tracked Crop/Stitch and FaceStitchUpscale). ComfyUI's native SAM 3.1 (`Run SAM3 Video Track` → `SAM3 Track to Mask`, prompt `face`) tracks the face; Face Crop zooms it to a 768 px square in every frame; H3 re-renders only the face with a **face reference** (`<Picture 1>`) and the audio for the mouth; Face Stitch pastes back only the face silhouette, colour matched. Model: [`sam3.1_multiplex_fp16.safetensors`](https://huggingface.co/Comfy-Org/sam3.1) in `models/checkpoints/`.
+
+**中文：** 新增两个节点 `bruxosdovfx • Face Crop (SAM 3.1)` 和 `bruxosdovfx • Face Stitch`（基于 Bruxos 的 Tracked Crop/Stitch 与 FaceStitchUpscale）。ComfyUI 原生 SAM 3.1（`Run SAM3 Video Track` → `SAM3 Track to Mask`，提示词 `face`）跟踪人脸；Face Crop 在每一帧把人脸放大成 768 像素的正方形；H3 只重绘人脸，使用**人脸参考**（`<Picture 1>`）和音频驱动口型；Face Stitch 只贴回人脸轮廓并匹配颜色。模型：[`sam3.1_multiplex_fp16.safetensors`](https://huggingface.co/Comfy-Org/sam3.1)，放在 `models/checkpoints/`。
+
+## Fundo com o movimento real da câmera / Background with the real camera motion / 跟随真实镜头运动的背景 (EXPERIMENTAL) — v5.9
+
+**PT:** `bruxosdovfx • Background Plate (camera match, experimental)` mede o movimento da câmera só no fundo do vídeo fonte (a pessoa sai pela máscara do SAM 3.1 `person`), aplica o mesmo movimento (pan, tilt, zoom, rotação) na imagem do novo fundo e compõe a pessoa por cima. Esse composite entra como `<Video 1>`, então o fundo gerado segue a câmera real. Só 2D, sem paralaxe de profundidade. Workflow: `minimaxH3BackgroundSwap_v23_fundoCamera_EXPERIMENTAL.json`.
+
+**EN:** `bruxosdovfx • Background Plate (camera match, experimental)` measures the camera motion on the source background only (the person is removed with the SAM 3.1 `person` mask), applies the same motion (pan, tilt, zoom, roll) to the new background image and composites the person on top. That composite goes in as `<Video 1>`, so the generated background follows the real camera. 2D only, no depth parallax.
+
+**中文：** `bruxosdovfx • Background Plate (camera match, experimental)` 只在源视频背景上测量镜头运动（用 SAM 3.1 `person` 遮罩去掉人物），把同样的运动（平移、俯仰、缩放、旋转）应用到新背景图片，并把人物合成在上面。合成结果作为 `<Video 1>`，生成的背景因此跟随真实镜头。仅 2D，无深度视差。
+
+## Fundo 3D / 3D background / 3D 背景 (MoGe, EXPERIMENTAL) — v5.9
+
+**PT:** `bruxosdovfx • Background Plate 3D (MoGe, experimental)`, na linha do [CrossView-Warp](https://huggingface.co/Cseti/MiniMax-H3_Ref2VA-LoRA-CrossView-Warp_v1): o MoGe nativo do ComfyUI dá a profundidade do vídeo fonte e da foto do novo fundo; pontos do fundo rastreados viram 3D e dão a rotação e a translação reais da câmera (PnP com keyframes, sem drift acumulado); a foto vira uma malha com profundidade renderizada dessa câmera, com paralaxe. Funciona com os LoRAs e modelos que você já usa (sem LoRA obrigatório). Modelo: [`moge_2_vitl_normal_fp16.safetensors`](https://huggingface.co/Comfy-Org/MoGe) em `models/geometry_estimation/`. Workflow: `minimaxH3BackgroundSwap_v24_fundo3D_MoGe_EXPERIMENTAL.json`.
+
+**EN:** `bruxosdovfx • Background Plate 3D (MoGe, experimental)`, in the CrossView-Warp spirit: ComfyUI's native MoGe gives the depth of the source video and of the new background photo; tracked background points are lifted to 3D and give the real camera rotation and translation (keyframe PnP, no accumulated drift); the photo becomes a depth mesh rendered from that camera, with parallax. Works with the LoRAs and models you already use (no LoRA required).
+
+**中文：** `bruxosdovfx • Background Plate 3D (MoGe, experimental)`，思路同 CrossView-Warp：ComfyUI 原生 MoGe 给出源视频和新背景照片的深度；跟踪的背景点提升为 3D，求出真实镜头的旋转和平移（关键帧 PnP，无累积漂移）；照片变成带深度的网格并从该镜头渲染，产生视差。可与现有的 LoRA 和模型一起使用（无需额外 LoRA）。
+
+## Novidades / What's new / 新功能 (v5.6 – v6.3)
+
+**PT**
+- **FreeNoise no modo blend windows (v6.3).** Novo `freenoise` no SyncTile Guider: a parte nova de cada janela começa de uma cópia embaralhada do ruído da janela anterior (Qiu et al., *FreeNoise*, ICLR 2024), menos fantasma na emenda e menos deriva. Mesma ideia do node nativo MiniMax H3 Context Windows do Kijai ([ComfyUI PR #17425](https://github.com/Comfy-Org/ComfyUI/pull/17425)). Workflow `minimaxH3_v31_FastH3_blend_FreeNoise.json`.
+- **Saída VIDEO no Stream Decode + DLSS 5 como pós-processo (v6.2).** O Stream Decode agora também entrega o arquivo gravado como `VIDEO` (lido do disco). Ligado no [RH DLSS5 Enhance](https://github.com/RH-RunningHub/ComfyUI-RH-DLSS5), ele processa em blocos e grava em streaming: 600 frames 2K → 4K sem estourar a RAM. Workflows `minimaxH3_v30_Regenerate2K_SyncTile_DLSS5.json` e `minimaxH3_v30b_HIBRIDO_Regenerate2K_DLSS5.json`.
+- **Open-H3 Regenerate 2K no SyncTile (v29).** Refino em 3 passos (0.909375 / 0.857143 / 0.666667 / 0) com o modelo fl2va + LoRA Regenerate, em tiles × janelas de 124 frames; TARA desligado.
+- **Atenção temporal à referência — TARA-H3 (v6.0).** Método de **Alisson Anjos** ([relatório técnico TARA-H3 v0.1.2, 2026](https://github.com/alisson-anjos/ai-toolkit/tree/tara-h3-v0.1.2/research/tara-h3)). O relógio (RoPE temporal) do vídeo de referência `<Video 1>` é alinhado com o vídeo gerado e cada frame gerado é levemente penalizado ao olhar frames distantes da referência: movimento, boca e ritmo seguem a referência com mais precisão. No SyncTile Guider: `temporal_reference = true` (+ `tara_strength`, `tara_window_seconds`, `tara_falloff_seconds`, `tara_max_penalty`, `tara_motion_video`). A nossa versão (`tara.py`) foi escrita a partir do relatório, sem copiar código dos repositórios dele; funciona por tile/janela e aceita frames-guia (pula as linhas de keyframe), então combina com o modo "frame anterior como guia". O node original dele é o [ComfyUI-BFSNodes](https://github.com/alisson-anjos/ComfyUI-BFSNodes/tree/feat/h3-native-temporal) (GPL-3.0) — use um ou outro, não os dois. Workflows: `minimaxH3_v26_VID2VID_TARA_FastH3.json`, `..._T2V_...`, `..._I2V_...`.
+- **`guide from previous window (latent clip)` (v6.1):** os frames prontos da janela anterior entram direto em latent como clipe-guia (sem VAE, levando o movimento) — ideia do [mo-akkakk](https://github.com/mo-akkakk/ComfyUI-MiniMaxH3-TemporalWindow-SpatialTiles). TARA mais rápido (kernels sem máscara).
+- **`temporal_mode = guide from previous window (1 frame)` (v5.6).** Janelas em sequência; o frame pronto onde cada janela começa vira o frame-guia da próxima, com troca seca. O modo carry também passou a usar troca seca (sem dupla exposição).
+- **Face Crop / Face Stitch com SAM 3.1 (v5.7)** para refinar rostos pequenos com uma referência de rosto (baseados no Tracked Crop/Stitch e no FaceStitchUpscale da Bruxos).
+- **Background Plate 2D e 3D — experimental (v5.8/v5.9).** Mede o movimento real da câmera no fundo do vídeo fonte e aplica na foto do novo fundo; a versão 3D usa a profundidade do MoGe e renderiza com paralaxe (ideia do [CrossView-Warp](https://huggingface.co/Cseti/MiniMax-H3_Ref2VA-LoRA-CrossView-Warp_v1) do Cseti e do [Meridian](https://huggingface.co/Viggle/Meridian) da Viggle, sem os LoRAs deles).
+
+**EN**
+- **FreeNoise in blend-windows mode (v6.3):** new `freenoise` on SyncTile Guider (FreeNoise, ICLR 2024; same idea as Kijai's native MiniMax H3 Context Windows, ComfyUI PR #17425).
+- **Stream Decode VIDEO output + DLSS 5 post-process (v6.2).** Stream Decode also outputs the written file as a file-backed `VIDEO`; [RH DLSS5 Enhance](https://github.com/RH-RunningHub/ComfyUI-RH-DLSS5) streams it in chunks (600 frames 2K → 4K without filling RAM). Open-H3 Regenerate 2K inside SyncTile (v29/v30).
+- **Temporal reference attention — TARA-H3 (v6.0).** Method by **Alisson Anjos** ([TARA-H3 technical report v0.1.2, 2026](https://github.com/alisson-anjos/ai-toolkit/tree/tara-h3-v0.1.2/research/tara-h3)). The reference video's temporal RoPE clock is aligned with the output and generated frames are softly penalised for attending to distant reference frames, so motion, mouth and timing follow the reference more closely. On SyncTile Guider: `temporal_reference = true` (+ `tara_*` settings). Our `tara.py` was written from the report, with no code copied from his repositories; it works per tile/window and accepts frame guides (keyframe rows are skipped), so it combines with "guide from previous window". His original node is [ComfyUI-BFSNodes](https://github.com/alisson-anjos/ComfyUI-BFSNodes/tree/feat/h3-native-temporal) (GPL-3.0) — use one or the other, not both.
+- **`guide from previous window (1 frame)`** temporal mode (v5.6); carry mode now switches hard (no double exposure).
+- **Face Crop / Face Stitch with SAM 3.1** (v5.7) to refine small faces with a face reference.
+- **Background Plate 2D / 3D — experimental** (v5.8/v5.9): real camera motion from the source background applied to the new background photo; the 3D version uses MoGe depth and renders with parallax (CrossView-Warp / Meridian idea, without their LoRAs).
+
+**中文**
+- **blend windows 模式下的 FreeNoise（v6.3）：** SyncTile Guider 新增 `freenoise`（FreeNoise，ICLR 2024；与 Kijai 的原生 MiniMax H3 Context Windows，ComfyUI PR #17425 思路相同）。
+- **流式解码 VIDEO 输出 + DLSS 5 后处理（v6.2）。** 流式解码把写出的文件作为基于文件的 `VIDEO` 输出；[RH DLSS5 Enhance](https://github.com/RH-RunningHub/ComfyUI-RH-DLSS5) 分块读取（600 帧 2K → 4K，不占满内存）。SyncTile 中的 Open-H3 Regenerate 2K（v29/v30）。
+- **参考时间注意力 — TARA-H3（v6.0）。** 方法作者 **Alisson Anjos**（[TARA-H3 技术报告 v0.1.2，2026](https://github.com/alisson-anjos/ai-toolkit/tree/tara-h3-v0.1.2/research/tara-h3)）。把参考视频的时间 RoPE 与输出对齐，并在注意力中轻罚生成帧关注参考视频中较远的帧，使动作、口型和节奏更贴近参考。在 SyncTile Guider 中设 `temporal_reference = true`。我们的 `tara.py` 依据报告独立实现，未复制其仓库代码；按图块/窗口工作并兼容帧引导。其原始节点为 [ComfyUI-BFSNodes](https://github.com/alisson-anjos/ComfyUI-BFSNodes/tree/feat/h3-native-temporal)（GPL-3.0），二者择一使用。
+- **`guide from previous window (1 frame)`** 时间模式（v5.6）；carry 模式改为直接切换（无重影）。
+- **Face Crop / Face Stitch（SAM 3.1）**（v5.7），用人脸参考精修小脸。
+- **Background Plate 2D / 3D — 实验功能**（v5.8/v5.9）：把源视频背景中的真实镜头运动应用到新背景照片；3D 版用 MoGe 深度并带视差渲染。
+
 ## Modelos / Models / 模型
 
 | Pasta / Folder / 文件夹 | Arquivo / File / 文件 |
@@ -284,6 +331,13 @@ Ideias que combinamos (nenhum código copiado, exceto onde indicado) · Ideas we
 | MiniMax H3 + nodes nativos · native nodes · 原生节点 | [MiniMaxAI](https://huggingface.co/MiniMaxAI/MiniMax-H3) · [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3) · [ComfyUI](https://github.com/comfyanonymous/ComfyUI) | Tudo · everything · 全部 |
 | Distilação em 4 passos (LoRA opcional) · 4-step distillation (optional LoRA) · 4 步蒸馏（可选 LoRA） | Wang, Yuan, Wang et al. *PDMD: Projected Distribution Matching Distillation* (UC San Diego / ByteDance), 2026. [arXiv:2609.35768](https://arxiv.org/abs/2609.35768) · [pdmd2026](https://huggingface.co/pdmd2026) · conversão ComfyUI [Kijai](https://huggingface.co/Kijai/MiniMax-H3-experimental/tree/main/loras) | Pilha de LoRA 1 · LoRA stack 1 · LoRA 组 1 |
 | Nitidez guiada pelo vídeo fonte · Source-guided sharpening · 源视频引导锐化 | [Alissonerdx / Minimax-H3-ComfyUI](https://huggingface.co/Alissonerdx/Minimax-H3-ComfyUI) (LMS v1.0 r64) | Pilha de LoRA 2 · LoRA stack 2 · LoRA 组 2 |
+| Atenção temporal à referência (RoPE alinhado + viés temporal) · Temporal reference attention · 参考时间注意力 | **Anjos, A.** *TARA-H3: Temporally Aligned Reference Attention for Native Video Conditioning.* Technical report v0.1.2, 2026. [ai-toolkit/research/tara-h3](https://github.com/alisson-anjos/ai-toolkit/tree/tara-h3-v0.1.2/research/tara-h3) · node original [ComfyUI-BFSNodes](https://github.com/alisson-anjos/ComfyUI-BFSNodes/tree/feat/h3-native-temporal) (GPL-3.0) | `tara.py`, SyncTile Guider `temporal_reference` (implementação própria a partir do relatório · own implementation from the report · 依据报告自行实现) |
+| Segmentação e tracking · Segmentation and tracking · 分割与跟踪 | Meta **SAM 3.1** via ComfyUI nativo · [Comfy-Org/sam3.1](https://huggingface.co/Comfy-Org/sam3.1) | Face Crop, Background Plate |
+| Profundidade monocular · Monocular geometry · 单目几何 | **MoGe** (Microsoft) via ComfyUI nativo · [Comfy-Org/MoGe](https://huggingface.co/Comfy-Org/MoGe) | Background Plate 3D |
+| Reprojeção por profundidade como guia · Depth-warp as guide · 深度重投影作为引导 | [Cseti — CrossView-Warp](https://huggingface.co/Cseti/MiniMax-H3_Ref2VA-LoRA-CrossView-Warp_v1) · [Viggle — Meridian](https://huggingface.co/Viggle/Meridian) | Ideia da placa 3D · idea of the 3D plate · 3D 背景板的思路 |
+| Clipe-guia latente da janela anterior · Previous-window latent guide clip · 上一窗口潜变量引导片段 | Mohamed (**mo-akkakk**) — [ComfyUI-MiniMaxH3-TemporalWindow-SpatialTiles](https://github.com/mo-akkakk/ComfyUI-MiniMaxH3-TemporalWindow-SpatialTiles) (MIT) | `temporal_mode = guide from previous window (latent clip)` (ideia, implementação própria · idea, own implementation · 思路，自行实现) |
 | LoRAs da mescla Background Replace v3 · LoRAs in the merge · 合并所用 LoRA | prithivMLmods, Akatz Labs, Lovis Odin / fal, Alissonerdx / Alisson Anjos (ver acima · see above · 见上文) | LoRA opcional · optional LoRA · 可选 LoRA |
 
 O que é novo neste pack · What is new in this pack · 本节点包的新内容：mistura dentro de cada chamada do modelo (qualquer sampler) · blending inside every model call (any sampler) · 在每次模型调用内融合（任意采样器）；regiões espaço × tempo numa trajetória · space × time regions in one trajectory · 单一轨迹中的时空区域；conditioning por região com vídeo de referência fatiado/recortado e frames-guia por janela · per-region conditioning with sliced/cropped reference video and per-window frame guides · 逐区域条件（参考视频切片/裁切、按窗口放置帧引导）；troca estrutura → detalhe por sigma · structure → detail switch by sigma · 按 sigma 切换结构 → 细节；decode em streaming para arquivo · streaming decode to file · 流式解码写入文件。
+| Pós-processo neural / upscale · Neural post-process / upscale · 神经后处理 / 放大 | NVIDIA **DLSS 5** via [RH-RunningHub/ComfyUI-RH-DLSS5](https://github.com/RH-RunningHub/ComfyUI-RH-DLSS5) (MIT; DLLs NVIDIA proprietárias, fornecidas pelo usuário · user-supplied proprietary NVIDIA DLLs) | Workflows v30 (2K → 4K) |
+| Refino 2K · 2K regenerate · 2K 重生成 | **Open-H3 Regenerate 2K** LoRA (r128) · [MiniMax H3](https://huggingface.co/MiniMaxAI/MiniMax-H3) | Workflows v29/v30, estágio 2 · stage 2 |

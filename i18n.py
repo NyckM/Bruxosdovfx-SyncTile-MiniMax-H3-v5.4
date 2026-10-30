@@ -109,14 +109,14 @@ T["SyncTileGuiderH3"] = {
     "temporal_mode": ("blend windows (joint): todas as janelas andam juntas e se misturam a cada passo (padrão antigo). "
                       "carry previous frames (sequential): as janelas rodam uma depois da outra; o começo de cada janela "
                       "fica preso aos frames já prontos da anterior (o modelo enxerga esses frames e continua a partir "
-                      "deles). Evita fantasma/dupla exposição nas transições e segura melhor o movimento de câmera.",
+                      "deles). guide from previous window (1 frame): janelas em sequência; o frame pronto onde cada janela começa vira o frame-guia (como o Add Guide) da janela seguinte, e a troca é seca nesse frame. guide from previous window (latent clip): igual, mas passa os carry_frames prontos (ex.: 22) direto em latent como um clipe-guia: sem VAE e levando também o movimento (ideia do mo-akkakk).",
                       "blend windows (joint): all windows move together and are blended at every step (old default). "
                       "carry previous frames (sequential): windows run one after another; the start of each window is "
                       "locked to the finished frames of the previous one (the model sees them and continues from them). "
-                      "Avoids ghosting/double exposure at the joins and keeps camera motion better.",
+                      "guide from previous window (1 frame): windows in sequence; the finished frame where each window starts becomes the next window's frame guide (like Add Guide), with a hard switch at that frame. guide from previous window (latent clip): same, but the finished carry_frames (e.g. 22) go in directly as a latent guide clip: no VAE round trip and the motion is carried too (idea by mo-akkakk).",
                       "blend windows (joint)：所有窗口同步去噪，每一步都融合（旧默认）。carry previous frames (sequential)："
                       "窗口依次运行；每个窗口的开头锁定为上一个窗口已完成的帧（模型能看到这些帧并接着生成）。"
-                      "可避免衔接处的重影/双重曝光，更好地保持镜头运动。"),
+                      "guide from previous window (1 frame)：窗口依次运行；每个窗口起始处已完成的帧作为下一个窗口的帧引导（类似 Add Guide），并在该帧处直接切换。guide from previous window (latent clip)：同上，但直接把已完成的 carry_frames 帧（如 22）以潜变量引导片段传入：无需 VAE，并带上动作（思路来自 mo-akkakk）。"),
     "carry_frames": ("Quantos frames do fim da janela anterior ficam presos no começo da próxima (só no modo carry). "
                      "Arredonda para o token do H3 (1, 5, 9, 13, 17, 21, 25…). 21 ≈ 0,9 s. Menos = mais liberdade, mais = mais "
                      "continuidade. Fica limitado pela window_overlap_frames.",
@@ -125,6 +125,40 @@ T["SyncTileGuiderH3"] = {
                      "more continuity. Capped by window_overlap_frames.",
                      "上一个窗口末尾有多少帧会锁定在下一个窗口开头（仅 carry 模式）。按 H3 token 取整（1、5、9、13、17、21、25…）。"
                      "21 ≈ 0.9 秒。越少越自由，越多越连贯。不超过 window_overlap_frames。"),
+    "temporal_reference": ("TARA-H3 (Alisson Anjos, 2026): o relógio do vídeo de referência (<Video N>) é alinhado com o "
+                           "vídeo gerado e cada frame gerado é levemente penalizado ao olhar frames distantes da referência. "
+                           "O movimento, a boca e o ritmo seguem a referência com mais precisão. Funciona com frames-guia. "
+                           "Precisa de cfg 1.0 e da referência com os mesmos frames da saída (24 fps).",
+                           "TARA-H3 (Alisson Anjos, 2026): the reference video's (<Video N>) clock is aligned with the "
+                           "output and each generated frame is softly penalised for attending to distant reference frames. "
+                           "Motion, mouth and timing follow the reference more closely. Works with frame guides. Needs cfg "
+                           "1.0 and a reference with the same frames as the output (24 fps).",
+                           "TARA-H3（Alisson Anjos，2026）：把参考视频（<Video N>）的时钟与输出对齐，并在注意力中轻罚生成帧关注"
+                           "参考视频中时间较远的帧。动作、口型和节奏更贴近参考。可与帧引导一起使用。需要 cfg 1.0，参考视频与"
+                           "输出帧数相同（24 fps）。"),
+    "tara_strength": ("Força da penalidade (λ). 2.0 = padrão do autor; 0 = só o alinhamento do relógio; 3–4 = segue mais.",
+                      "Penalty strength (λ). 2.0 = author's default; 0 = clock alignment only; 3–4 = follows more.",
+                      "惩罚强度（λ）。2.0 = 作者默认；0 = 只做时钟对齐；3–4 = 跟随更紧。"),
+    "tara_window_seconds": ("Janela sem penalidade (s): frames da referência até essa distância são livres. Padrão 0.2.",
+                            "Free window (s): reference frames up to this distance are not penalised. Default 0.2.",
+                            "无惩罚窗口（秒）：在此距离内的参考帧不受惩罚。默认 0.2。"),
+    "tara_falloff_seconds": ("Queda da penalidade (s) depois da janela. Padrão 0.25.",
+                             "Penalty falloff (s) after the window. Default 0.25.", "窗口之后的惩罚衰减（秒）。默认 0.25。"),
+    "tara_max_penalty": ("Penalidade máxima (teto). Padrão 6.0; frames distantes continuam visíveis, só pesam menos.",
+                         "Maximum penalty (cap). Default 6.0; distant frames stay visible, they just weigh less.",
+                         "最大惩罚（上限）。默认 6.0；远处的帧仍可见，只是权重更低。"),
+    "freenoise": ("FreeNoise (modo blend windows): a parte nova de cada janela recebe uma cópia embaralhada do ruído do início da "
+                  "janela anterior, então as janelas sobrepostas começam de ruído parecido e concordam mais cedo: menos mescla/"
+                  "fantasma na emenda e menos deriva em vídeos longos. Mesma ideia do MiniMax H3 Context Windows nativo (Kijai, "
+                  "PR #17425). Não age nos modos sequenciais (guide/carry).",
+                  "FreeNoise (blend windows mode): the new part of each window gets a shuffled copy of the previous window's "
+                  "leading noise, so overlapping windows start from similar noise and agree sooner: less ghosting at the joins "
+                  "and less drift on long videos. Same idea as the native MiniMax H3 Context Windows (Kijai, PR #17425). No "
+                  "effect in the sequential modes (guide/carry).",
+                  "FreeNoise（blend windows 模式）：每个窗口新增的部分使用上一窗口开头噪声的打乱副本，使重叠窗口从相似噪声出发、更早达成一致："
+                  "接缝处重影更少，长视频漂移更少。与原生 MiniMax H3 Context Windows（Kijai，PR #17425）思路相同。对顺序模式（guide/carry）无效。"),
+    "tara_motion_video": ("Qual <Video N> é a referência de movimento (normalmente 1).",
+                          "Which <Video N> is the motion reference (usually 1).", "哪个 <Video N> 是动作参考（通常为 1）。"),
 }
 
 # --------------------------------------------------------------------------- SyncTile Ref2VA Conditioning
@@ -250,9 +284,171 @@ T["SyncTileStreamDecodeVideoH3"] = {
                      "and says so; the file is written anyway.",
                      "同时以 IMAGE 输出帧（例如接 Save Video Pro）。占用内存：帧数 x 宽 x 高 x 12 字节"
                      "（600 帧 2208x2848 ≈ 45 GB；half = 1/4）。内存不够时会降为 half，再降为 off 并提示；文件照常写入。"),
+    "_out_video": ("Saída VIDEO: o arquivo gravado como VIDEO, lido do disco. Ligue no RH DLSS5 Enhance (entrada video) "
+                   "para pós-processar sem carregar o vídeo na RAM.",
+                   "VIDEO output: the written file as a VIDEO read from disk. Connect it to RH DLSS5 Enhance (video input) "
+                   "to post-process without loading the video in RAM.",
+                   "VIDEO 输出：以 VIDEO 形式读取已写出的文件。接到 RH DLSS5 Enhance 的 video 输入，可在不占用内存的情况下做后处理。"),
     "write_video": ("Grava o arquivo de vídeo. Desligado = só a saída IMAGE (sem ffmpeg).",
                     "Write the video file. Off = only the IMAGE output (no ffmpeg).",
                     "写出视频文件。关闭 = 只输出 IMAGE（不调用 ffmpeg）。"),
+}
+
+
+# --------------------------------------------------------------------------- Face Crop / Face Stitch (SAM 3.1)
+T["SyncTileFaceCropH3"] = {
+    "_desc": ("Recorta o rosto seguindo a máscara do SAM 3.1 (Run SAM3 Video Track → SAM3 Track to Mask, prompt 'face') "
+              "e amplia para um quadrado do mesmo tamanho em todos os frames: rosto pequeno vira rosto grande para o H3 "
+              "refinar. Depois o Face Stitch cola de volta na posição e escala de cada frame.",
+              "Crops the face following the SAM 3.1 mask (Run SAM3 Video Track → SAM3 Track to Mask, prompt 'face') and "
+              "zooms it to a square of the same size in every frame: a small face becomes a large face for H3 to refine. "
+              "Face Stitch then pastes it back at each frame's position and scale.",
+              "按 SAM 3.1 的遮罩（Run SAM3 Video Track → SAM3 Track to Mask，提示词 'face'）裁出人脸，并在每一帧放大到同样大小的"
+              "正方形：小脸变成大脸交给 H3 精修。之后由 Face Stitch 按每帧的位置和比例贴回。"),
+    "images": ("Vídeo onde estão os rostos (ex.: a saída IMAGE do Stream Decode).",
+               "Video holding the faces (e.g. the Stream Decode IMAGE output).",
+               "包含人脸的视频（例如 Stream Decode 的 IMAGE 输出）。"),
+    "mask": ("Máscara do rosto por frame, do SAM3 Track to Mask. Pode estar em resolução menor: é ampliada sozinha.",
+             "Per-frame face mask from SAM3 Track to Mask. It may be smaller: it is resized automatically.",
+             "来自 SAM3 Track to Mask 的逐帧人脸遮罩。分辨率可以更低，会自动缩放。"),
+    "out_size": ("Tamanho do quadrado do rosto (px). 768 = rosto bem grande para o H3; 512 = mais rápido.",
+                 "Size of the face square (px). 768 = a large face for H3; 512 = faster.",
+                 "人脸正方形的尺寸（像素）。768 = 给 H3 的大脸；512 = 更快。"),
+    "padding": ("Folga em volta do rosto (fração do tamanho do rosto). 0.45 inclui cabelo, queixo e um pouco de fundo.",
+                "Margin around the face (fraction of the face size). 0.45 includes hair, chin and some background.",
+                "人脸周围的留白（占人脸尺寸的比例）。0.45 包含头发、下巴和一点背景。"),
+    "center_smooth": ("Suaviza a posição do recorte no tempo (frames). Evita tremor.",
+                      "Smooths the crop position over time (frames). Avoids jitter.",
+                      "在时间上平滑裁切位置（帧数），避免抖动。"),
+    "size_smooth": ("Suaviza o tamanho do recorte (frames). Maior = o zoom não 'respira'.",
+                    "Smooths the crop size (frames). Higher = the zoom does not 'breathe'.",
+                    "平滑裁切尺寸（帧数）。越大缩放越不会“呼吸”。"),
+    "mask_threshold": ("Limiar da máscara para medir o rosto.", "Mask threshold used to measure the face.",
+                       "测量人脸时使用的遮罩阈值。"),
+}
+T["SyncTileFaceStitchH3"] = {
+    "_desc": ("Cola o rosto refinado de volta no vídeo, na posição e escala de cada frame, com borda suave e ajuste de cor. "
+              "Frames em que o SAM perdeu o rosto ficam com o original.",
+              "Pastes the refined face back into the video at each frame's position and scale, with a soft edge and colour "
+              "match. Frames where SAM lost the face keep the original.",
+              "把精修后的人脸按每帧的位置和比例贴回视频，带柔和边缘和颜色匹配。SAM 丢失人脸的帧保持原样。"),
+    "images": ("O mesmo vídeo ligado no Face Crop.", "The same video connected to Face Crop.", "与 Face Crop 相同的视频。"),
+    "face_video": ("Vídeo do rosto já refinado (mesmo tamanho do face_video do Face Crop).",
+                   "The refined face video (same size as Face Crop's face_video).",
+                   "已精修的人脸视频（与 Face Crop 的 face_video 同尺寸）。"),
+    "crop_data": ("Saída crop_data do Face Crop.", "crop_data output of Face Crop.", "Face Crop 的 crop_data 输出。"),
+    "compose": ("silhouette: só o rosto/cabelo da máscara do SAM volta (recomendado). ellipse: elipse no recorte. "
+                "rectangle: o quadrado inteiro.",
+                "silhouette: only the face/hair from the SAM mask is pasted (recommended). ellipse: an ellipse inside the "
+                "crop. rectangle: the whole square.",
+                "silhouette：只贴回 SAM 遮罩中的脸/头发（推荐）。ellipse：裁切内的椭圆。rectangle：整个正方形。"),
+    "mask_grow": ("Expande a máscara (px no recorte) para cobrir a borda do rosto.",
+                  "Grows the mask (px in the crop) to cover the face edge.", "扩展遮罩（裁切内像素）以覆盖人脸边缘。"),
+    "feather": ("Suavidade da borda (px).", "Edge softness (px).", "边缘柔和度（像素）。"),
+    "colour_match": ("Casa cor e contraste do rosto novo com o original.", "Matches colour and contrast to the original.",
+                     "让新脸的颜色和对比度与原始画面一致。"),
+    "blend": ("1 = rosto novo inteiro; menos = mistura com o original.", "1 = full new face; lower = mix with the original.",
+              "1 = 完全使用新脸；更低 = 与原始画面混合。"),
+}
+
+
+# --------------------------------------------------------------------------- Background Plate (experimental)
+T["SyncTileBackgroundPlateH3"] = {
+    "_desc": ("EXPERIMENTAL. Mede o movimento real da câmera no FUNDO do vídeo fonte (a pessoa é tirada pela máscara do "
+              "SAM 3.1), aplica o mesmo movimento na imagem do novo ambiente e compõe a pessoa por cima. Ligue o "
+              "'composite' no lugar do vídeo fonte: o H3 recebe o fundo já se movendo como a câmera real (<Video 1>). "
+              "Só 2D: pan, tilt, zoom e rotação; sem paralaxe de profundidade.",
+              "EXPERIMENTAL. Measures the real camera motion on the BACKGROUND of the source video (the person is removed "
+              "with the SAM 3.1 mask), applies the same motion to the new environment image and composites the person on "
+              "top. Connect 'composite' instead of the source video: H3 gets a background already moving like the real "
+              "camera (<Video 1>). 2D only: pan, tilt, zoom and roll; no depth parallax.",
+              "实验功能。在源视频的背景上测量真实的镜头运动（用 SAM 3.1 遮罩去掉人物），把同样的运动应用到新环境图片上，"
+              "再把人物合成在上面。用 'composite' 代替源视频：H3 得到已经按真实镜头运动的背景（<Video 1>）。"
+              "仅 2D：平移、俯仰、缩放和旋转；没有深度视差。"),
+    "images": ("Vídeo fonte (o mesmo do Load Video Pro).", "Source video (same as Load Video Pro).", "源视频（与 Load Video Pro 相同）。"),
+    "person_mask": ("Máscara da pessoa por frame (SAM3 Track to Mask com prompt 'person'). Ela é tirada da medição do "
+                    "movimento e fica na frente da placa.",
+                    "Per-frame person mask (SAM3 Track to Mask with prompt 'person'). It is excluded from the motion "
+                    "measurement and stays in front of the plate.",
+                    "逐帧人物遮罩（SAM3 Track to Mask，提示词 'person'）。测量运动时排除，并保持在背景板前面。"),
+    "background": ("Imagem do novo fundo (ex.: a selva). De preferência sem pessoa; se tiver, ligue background_person_mask.",
+                   "New background image (e.g. the jungle). Ideally without a person; if it has one, connect "
+                   "background_person_mask.",
+                   "新背景图片（例如丛林）。最好没有人物；如果有，请连接 background_person_mask。"),
+    "background_person_mask": ("Opcional: máscara da pessoa NA IMAGEM de fundo (SAM3 Detect 'person'). A pessoa é apagada "
+                               "(inpaint) para não andar junto com o fundo.",
+                               "Optional: person mask ON the background image (SAM3 Detect 'person'). The person is erased "
+                               "(inpaint) so it does not move with the background.",
+                               "可选：背景图片中人物的遮罩（SAM3 Detect 'person'）。会把人物抹掉（修补），以免随背景移动。"),
+    "motion_model": ("similarity: pan, zoom e rotação (mais estável, recomendado). affine: também cisalhamento. "
+                     "homography: perspectiva (câmera girando muito); pode distorcer.",
+                     "similarity: pan, zoom and roll (most stable, recommended). affine: adds shear. homography: "
+                     "perspective (strong camera turns); may distort.",
+                     "similarity：平移、缩放、旋转（最稳定，推荐）。affine：加上错切。homography：透视（镜头大幅转动）；可能变形。"),
+    "plate_scale": ("Quanto a imagem de fundo é maior que o quadro, para sobrar imagem quando a câmera anda. Câmera andando "
+                    "muito: 1.6–2.0 (as bordas são espelhadas quando acaba).",
+                    "How much larger the background image is than the frame, so there is image left when the camera moves. "
+                    "Big camera moves: 1.6–2.0 (edges are mirrored when it runs out).",
+                    "背景图片比画面大多少，镜头移动时仍有画面。镜头移动很大：1.6–2.0（超出时边缘镜像）。"),
+    "mask_grow": ("Margem (px) em volta da pessoa ignorada na medição (cabelo, sombra, borda).",
+                  "Margin (px) around the person ignored when measuring (hair, shadow, edge).",
+                  "测量时忽略的人物周围边距（像素：头发、阴影、边缘）。"),
+    "smooth": ("Suaviza tremidas da medição (frames). 0 = segue exatamente; 3 = padrão.",
+               "Smooths measurement jitter (frames). 0 = follow exactly; 3 = default.", "平滑测量抖动（帧数）。0 = 完全跟随；3 = 默认。"),
+    "feather": ("Borda suave da pessoa no composite (px).", "Soft edge of the person in the composite (px).",
+                "合成中人物边缘的柔化（像素）。"),
+    "track_width": ("Largura usada só para medir o movimento (px). 640 é rápido e preciso.",
+                    "Width used only to measure motion (px). 640 is fast and accurate.", "仅用于测量运动的宽度（像素）。640 快且准确。"),
+}
+
+
+T["SyncTileBackgroundPlate3DH3"] = {
+    "_desc": ("EXPERIMENTAL. Versão 3D da placa de fundo, na linha do CrossView-Warp: o MoGe dá a profundidade do vídeo fonte "
+              "e da foto do novo fundo; os pontos do fundo rastreados viram 3D e dão a rotação E a translação reais da "
+              "câmera (PnP); a foto vira uma malha com profundidade e é renderizada dessa câmera, com paralaxe (perto passa "
+              "mais rápido que longe). A pessoa é composta por cima e o 'composite' vira o <Video 1>.",
+              "EXPERIMENTAL. 3D version of the background plate, in the CrossView-Warp spirit: MoGe gives the depth of the "
+              "source video and of the new background photo; tracked background points become 3D and give the real camera "
+              "rotation AND translation (PnP); the photo becomes a depth mesh rendered from that camera, with parallax (near "
+              "moves faster than far). The person is composited on top and 'composite' becomes <Video 1>.",
+              "实验功能。背景板的 3D 版本，思路同 CrossView-Warp：MoGe 给出源视频和新背景照片的深度；跟踪到的背景点提升为 3D，"
+              "求出真实镜头的旋转和平移（PnP）；照片变成带深度的网格，从该镜头渲染，带视差（近处比远处移动更快）。"
+              "人物合成在上面，'composite' 作为 <Video 1>。"),
+    "images": ("Vídeo fonte.", "Source video.", "源视频。"),
+    "person_mask": ("Máscara da pessoa por frame (SAM 3.1 'person'): fica fora da medição e na frente da placa.",
+                    "Per-frame person mask (SAM 3.1 'person'): excluded from the measurement and kept in front of the plate.",
+                    "逐帧人物遮罩（SAM 3.1 'person'）：不参与测量，并保持在背景板前面。"),
+    "source_geometry": ("Run MoGe Inference no vídeo fonte (todos os frames, pode ser reduzido).",
+                        "Run MoGe Inference on the source video (all frames, can be downscaled).",
+                        "对源视频运行 Run MoGe Inference（所有帧，可缩小）。"),
+    "background": ("Foto do novo fundo.", "New background photo.", "新背景照片。"),
+    "background_geometry": ("Run MoGe Inference na foto do novo fundo.", "Run MoGe Inference on the new background photo.",
+                            "对新背景照片运行 Run MoGe Inference。"),
+    "background_person_mask": ("Opcional: pessoa na foto de fundo (SAM3 Detect 'person'); cor e profundidade dela são apagadas.",
+                               "Optional: person in the background photo (SAM3 Detect 'person'); its colour and depth are erased.",
+                               "可选：背景照片中的人物（SAM3 Detect 'person'）；其颜色和深度会被抹掉。"),
+    "translation": ("relative: o deslocamento da câmera é escalado pela profundidade das duas cenas (a paralaxe parece a do "
+                    "vídeo real). metric: usa a medida direta. off: só rotação (sem paralaxe).",
+                    "relative: camera travel is scaled by the depth of both scenes (parallax looks like the real video). "
+                    "metric: uses the measurement as is. off: rotation only (no parallax).",
+                    "relative：按两个场景的深度缩放镜头位移（视差看起来像真实视频）。metric：直接使用测量值。off：只有旋转（无视差）。"),
+    "motion_scale": ("Multiplica o deslocamento da câmera (mais = mais paralaxe).", "Multiplies camera travel (more = more parallax).",
+                     "放大镜头位移（越大视差越大）。"),
+    "plate_scale": ("Quanto da foto sobra fora do quadro para a câmera andar.", "How much of the photo lies outside the frame for the camera to move into.",
+                    "画面外留出多少照片供镜头移动。"),
+    "hole_fill": ("Áreas que a câmera revela e a foto não tem: inpaint (preenche), magenta (convenção do LoRA CrossView-Warp), "
+                  "grey (como o Meridian). magenta/grey: o H3 inventa o conteúdo.",
+                  "Areas the camera reveals that the photo lacks: inpaint (filled), magenta (CrossView-Warp LoRA convention), "
+                  "grey (like Meridian). magenta/grey: H3 invents the content.",
+                  "镜头揭示而照片中没有的区域：inpaint（填充）、magenta（CrossView-Warp LoRA 约定）、grey（类似 Meridian）。magenta/grey：由 H3 生成内容。"),
+    "render_width": ("Largura em que a placa é renderizada (depois ampliada). 1024 basta, o H3 refaz os detalhes.",
+                     "Width the plate is rendered at (then enlarged). 1024 is enough, H3 redoes the detail.",
+                     "背景板的渲染宽度（之后放大）。1024 足够，细节由 H3 重绘。"),
+    "mask_grow": ("Margem em volta da pessoa ignorada na medição (px).", "Margin around the person ignored when measuring (px).",
+                  "测量时忽略的人物周围边距（像素）。"),
+    "smooth": ("Suaviza a câmera medida (frames).", "Smooths the measured camera (frames).", "平滑测得的镜头（帧数）。"),
+    "feather": ("Borda suave da pessoa (px).", "Soft edge of the person (px).", "人物边缘柔化（像素）。"),
+    "track_width": ("Largura usada para rastrear (px).", "Width used for tracking (px).", "用于跟踪的宽度（像素）。"),
 }
 
 
@@ -268,6 +464,14 @@ def apply(mappings):
             continue
         if "_desc" in tips:
             cls.DESCRIPTION = tooltip(*tips["_desc"])
+        outs = [k[5:] for k in tips if k.startswith("_out_")]
+        if outs and hasattr(cls, "RETURN_NAMES"):
+            ot = list(getattr(cls, "OUTPUT_TOOLTIPS", ("",) * len(cls.RETURN_NAMES)))
+            ot += [""] * (len(cls.RETURN_NAMES) - len(ot))
+            for o in outs:
+                if o in cls.RETURN_NAMES:
+                    ot[cls.RETURN_NAMES.index(o)] = tooltip(*tips["_out_" + o])
+            cls.OUTPUT_TOOLTIPS = tuple(ot)
         original = cls.INPUT_TYPES.__func__
 
         def wrapped(c, _orig=original, _tips=tips):

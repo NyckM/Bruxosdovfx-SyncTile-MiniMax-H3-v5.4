@@ -36,6 +36,14 @@ MODE_PER_CALL = "per model call"
 MODE_ORIGINAL = "SyncTile original (euler, per step)"
 TEMPORAL_BLEND = "blend windows (joint)"
 TEMPORAL_CARRY = "carry previous frames (sequential)"
+TEMPORAL_GUIDE = "guide from previous window (1 frame)"
+TEMPORAL_GUIDE_CLIP = "guide from previous window (latent clip)"
+
+try:
+    from . import tara as _tara
+except ImportError:                                   # loaded as a plain module (tests)
+    import importlib as _il
+    _tara = _il.import_module(__name__.rsplit(".", 1)[0] + ".tara") if "." in __name__ else None
 
 
 def _pack(parts):
@@ -152,6 +160,21 @@ def make_grid(lat_h, lat_w, tile_px_w, tile_px_h, min_overlap, T=None, A=None, w
     return regions
 
 
+def freenoise_spans(noise, dim, spans, seed):
+    """FreeNoise (Qiu et al., ICLR 2024) over our own windows: the new part of each window reuses a shuffled copy
+    of the previous window's leading noise, so overlapping windows start from correlated noise and agree sooner.
+    spans: [(start, length)] in order along `dim`. Edits `noise` in place and returns it."""
+    gen = torch.Generator(device="cpu").manual_seed(int(seed) & 0xFFFFFFFFFFFFFFFF)
+    for (p0, pn), (s0, sn) in zip(spans, spans[1:]):
+        place, end = p0 + pn, min(s0 + sn, noise.shape[dim])
+        d = min(end - place, s0 - p0)
+        if d <= 0:
+            continue
+        src = torch.randperm(d, generator=gen) + p0
+        noise.narrow(dim, place, d).copy_(noise.index_select(dim, src.to(noise.device)))
+    return noise
+
+
 def region_frames(r):
     """Pixel frames covered by a region: (first_frame, frame_count)."""
     t0, tn = r.get("t", (0, None)) if r.get("t") else (0, None)
@@ -175,6 +198,7 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         self.detail_sigma = 0.85
         self.window_frames, self.window_overlap = 0, 39
         self.temporal_mode, self.carry_frames = TEMPORAL_BLEND, 21
+        self.tara = None              # (video_index, (strength, window, falloff, cap)) -> TARA-H3 temporal attention
 
     # ---- grid for the latent being sampled
     def _grid(self, latent_shapes):
@@ -248,6 +272,18 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         finally:
             comfy.sampler_helpers.prepare_sampling = original
 
+    def _freenoise(self, noise, latent_shapes, seed):
+        tspans = sorted({r["t"] for r in self.grid if r.get("t")})
+        aspans = sorted({r["a"] for r in self.grid if r.get("a")})
+        multi = latent_shapes is not None and len(latent_shapes) > 1
+        parts = comfy.utils.unpack_latents(noise, latent_shapes) if multi else [noise]
+        parts = [p.clone() for p in parts]
+        freenoise_spans(parts[0], 2, tspans, seed)
+        if multi and len(aspans) == len(tspans):
+            freenoise_spans(parts[1], parts[1].ndim - 1, aspans, seed + 1)
+        log.info("SyncTile: FreeNoise over %d windows (video%s)", len(tspans), " + audio" if multi and aspans else "")
+        return comfy.utils.pack_latents(parts)[0] if multi else parts[0]
+
     # ---- process the conditioning once per region, at region size
     def inner_sample(self, noise, latent_image, device, sampler, sigmas, denoise_mask, callback, disable_pbar,
                      seed, latent_shapes=None):
@@ -280,19 +316,25 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                     draw["negative"] = [c.copy() for c in raw["negative"]]
                 dconds = comfy.samplers.process_conds(self.inner_model, tnoise, draw, device, timage, None, seed,
                                                       latent_shapes=shapes)
+            tconds = self._tara_patch(tconds, i)
+            dconds = self._tara_patch(dconds, i)
             t0, tn = r["t"]
             w3 = r["tw"].view(-1, 1, 1) * r["weight"][None]
             self.tiles.append({"box": r["box"], "t": (t0, tn), "a": r.get("a"), "shapes": shapes,
-                               "raw": raw, "draw": draw if dconds is not None else None,
+                               "raw": raw, "draw": draw if dconds is not None else None, "src": i,
                                "conds": tconds, "conds_detail": dconds,
                                "w3": w3.to(device=device, dtype=torch.float32),
                                "w2": r["weight"].to(device=device, dtype=torch.float32),
                                "aw": r["aw"].to(device=device, dtype=torch.float32) if r.get("aw") is not None else None})
-        self.conds = self.tiles[0]["conds"]  # what generic code paths see; predict_noise uses per-region conds
+        # what generic code paths see (predict_noise uses per-region conds); private keys such as _tara stay out
+        self.conds = {k: v for k, v in self.tiles[0]["conds"].items() if not k.startswith("_")}
 
         if self.refine_seed is not None:
             gen = torch.Generator().manual_seed(self.refine_seed)
             noise = torch.randn(noise.shape, generator=gen, dtype=torch.float32).to(noise.device, noise.dtype)
+        temporal_mode = getattr(self, "temporal_mode", TEMPORAL_BLEND)
+        if getattr(self, "freenoise", False) and n_windows > 1 and temporal_mode == TEMPORAL_BLEND:
+            noise = self._freenoise(noise, latent_shapes, seed)
         n_tiles = len(self.tiles) // max(1, n_windows)
         log.info("SyncTile: %d regions (%d tiles x %d windows) on a %dx%d canvas, %d frames, mode=%s, noise=%s",
                  len(self.tiles), n_tiles, n_windows, latent_shapes[0][4] * STRIDE, latent_shapes[0][3] * STRIDE,
@@ -302,7 +344,8 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         extra_model_options = comfy.model_patcher.create_model_options_clone(self.model_options)
         extra_model_options.setdefault("transformer_options", {})["sample_sigmas"] = sigmas
         extra_args = {"model_options": extra_model_options, "seed": seed}
-        carry = getattr(self, "temporal_mode", TEMPORAL_BLEND) == TEMPORAL_CARRY and n_windows > 1
+        carry = getattr(self, "temporal_mode", TEMPORAL_BLEND) in (TEMPORAL_CARRY, TEMPORAL_GUIDE,
+                                                                   TEMPORAL_GUIDE_CLIP) and n_windows > 1
         if carry:
             if self.mode == MODE_ORIGINAL:
                 log.warning("SyncTile: 'carry previous frames' uses the connected sampler; sync_mode original is ignored.")
@@ -321,8 +364,8 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
     def _sample_carry(self, noise, latent_image, sampler, sigmas, extra_args, callback, disable_pbar):
         """Windows run one after another. The first carry tokens of window k are locked to the finished clean
         estimate (x0) of the previous windows, RePaint-style (re-noised to the current sigma in predict_noise),
-        so the model sees those frames as context and continues from them; the rest of the overlap is
-        cross-faded. Spatial tiles inside a window are still blended at every model call.
+        so the model sees those frames as context and continues from them; right after them the new window
+        takes over (no cross-fade, which would ghost moving subjects). Spatial tiles inside a window are still blended at every model call.
 
         Two canvases are kept: the sampler state (what SamplerCustomAdvanced returns as `output`) and the clean
         estimate x0 (its `denoised_output`). They differ whenever the sigmas end above 0 (e.g. SplitSigmas
@@ -331,6 +374,8 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         old_ls = getattr(self.inner_model, "latent_shapes", None)
         windows = sorted({(r["t"], r["a"]) for r in all_tiles}, key=lambda w: w[0][0])
         carry_tok = 1 + math.ceil((max(1, int(getattr(self, "carry_frames", 21))) - 1) / 4)
+        guide_mode = getattr(self, "temporal_mode", TEMPORAL_BLEND) in (TEMPORAL_GUIDE, TEMPORAL_GUIDE_CLIP)
+        clip_mode = getattr(self, "temporal_mode", TEMPORAL_BLEND) == TEMPORAL_GUIDE_CLIP
         canvas_x = [p.clone() for p in _unpack(latent_image, full_shapes)]     # sampler state
         canvas_0 = [p.clone() for p in canvas_x]                                # clean estimate x0
         noise_parts = _unpack(noise, full_shapes)
@@ -374,16 +419,34 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                 wnoise = _pack(window_slice(noise_parts, t, a))
                 wlat = _pack(window_slice(canvas_0, t, a))            # clean: input latent + finished x0
                 mask, c, ac, fade, afade = None, 0, 0, None, None
-                if prev is not None:
+                if prev is not None and guide_mode:
+                    # 1 frame: the finished frame where this window starts is decoded and re-encoded as its frame guide;
+                    # latent clip: the finished overlap latents themselves (several frames, no VAE round trip) become a
+                    # frame-0 guide clip, which also carries the motion. Native H3 keyframes either way.
+                    clip_tok = 0
+                    if clip_mode:
+                        (pt0, ptn), _pa = prev
+                        ov = max(0, min(tn - 5, pt0 + ptn - t0))
+                        clip_tok = min(tokens_for_frames(max(5, int(getattr(self, "carry_frames", 22)))),
+                                       tokens_for_frames(frames_for_tokens(ov)) if ov >= 2 else 0)
+                    self._guide_window_from(canvas_0, t0, wnoise, wlat, wshapes, a, clip_tok)
+                    c = clip_tok
+                    fade = torch.ones(tn, device=canvas_x[0].device)
+                    if clip_tok > 0:                                  # the window reproduces the guided frames: ease in
+                        e = torch.linspace(0, 1, clip_tok + 2, device=fade.device)[1:-1]
+                        fade[:clip_tok] = e * e * (3 - 2 * e)
+                    afade = torch.ones(a[1], device=canvas_x[0].device) if a else None
+                elif prev is not None:
                     (pt0, ptn), pa = prev
                     ov = max(0, min(tn, pt0 + ptn - t0))
                     c = min(carry_tok, ov, tn - 1)
                     mparts = [torch.ones(wshapes[0], dtype=noise.dtype, device=noise.device)]
                     mparts[0][:, :, :c] = 0
+                    # hard switch right after the locked frames: the new window was generated *from* them, so
+                    # it continues them; cross-fading the rest of the overlap would mix two different takes
+                    # (double exposure / ghosting when the subject moves)
                     fade = torch.ones(tn, device=canvas_x[0].device)
                     fade[:c] = 0
-                    if ov > c:
-                        fade[c:ov] = torch.linspace(0, 1, ov - c + 2, device=fade.device)[1:-1]
                     if a:
                         aov = max(0, pa[0] + pa[1] - a[0])
                         ac = min(audio_ticks(1 + 4 * (c - 1)), aov) if c > 0 else 0
@@ -393,8 +456,6 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                             mparts.append(m)
                         afade = torch.ones(a[1], device=canvas_x[0].device)
                         afade[:ac] = 0
-                        if aov > ac:
-                            afade[ac:aov] = torch.linspace(0, 1, aov - ac + 2, device=afade.device)[1:-1]
                     mask = _pack(mparts)
 
                 last = {}
@@ -411,9 +472,16 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                     fp = _pack(full)
                     callback(i, fp, fp, total)
 
-                log.info("SyncTile carry: window %d/%d, frames %d-%d, %d locked tokens (~%d frames) from the previous window",
-                         k + 1, len(windows), 17 * (t0 // 5), 17 * (t0 // 5) + frames_for_tokens(tn) - 1, c,
-                         0 if c == 0 else 1 + 4 * (c - 1))
+                if guide_mode:
+                    what = (f"{frames_for_tokens(c)} finished frames ({c} latent tokens) as a guide clip" if clip_mode and c
+                            else f"frame {17 * (t0 // 5)} of the previous window as guide")
+                    log.info("SyncTile guide-prev: window %d/%d, frames %d-%d%s", k + 1, len(windows),
+                             17 * (t0 // 5), 17 * (t0 // 5) + frames_for_tokens(tn) - 1,
+                             "" if prev is None else ", " + what)
+                else:
+                    log.info("SyncTile carry: window %d/%d, frames %d-%d, %d locked tokens (~%d frames) from the previous window",
+                             k + 1, len(windows), 17 * (t0 // 5), 17 * (t0 // 5) + frames_for_tokens(tn) - 1, c,
+                             0 if c == 0 else 1 + 4 * (c - 1))
                 executor = comfy.patcher_extension.WrapperExecutor.new_class_executor(
                     sampler.sample, sampler,
                     comfy.patcher_extension.get_all_wrappers(comfy.patcher_extension.WrappersMP.SAMPLER_SAMPLE,
@@ -440,6 +508,63 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         if callback is not None:
             callback(steps - 1, out_0, out_x, steps)
         return out_x
+
+    def _guide_window_from(self, canvas_0, t0, wnoise, wlat, wshapes, a, clip_tok=0):
+        """Decode the finished frame at token t0 (a 1-frame token: frame 17*t0/5), encode it per tile like
+        MiniMax H3 Add Guide and rebuild this window's conds with it as keyframe at local frame 0."""
+        tc = self.tile_conds
+        vae = (tc or {}).get("vae")
+        if tc is not None and clip_tok > 0:                          # latent clip: no VAE needed
+            v = canvas_0[0][:, :, t0:t0 + clip_tok]
+            lf = getattr(self.inner_model, "latent_format", None)
+            v = (lf.process_out(v) if lf is not None else v).detach().float().cpu()
+            img, vae = None, None
+            self._rebuild_window_conds(tc, wnoise, wlat, wshapes, a,
+                                       lambda box: v[..., box[1]:box[1] + box[3], box[0]:box[0] + box[2]].contiguous())
+            return
+        if tc is None or vae is None:
+            raise ValueError("SyncTile: 'guide from previous window' needs a SyncTile conditioning node with its vae "
+                             "input connected (update the node and reconnect tile_conditioning).")
+        v = canvas_0[0][:, :, t0:t0 + 2]                             # 2 tokens = a valid 5-frame clip
+        lf = getattr(self.inner_model, "latent_format", None)
+        if lf is not None:
+            v = lf.process_out(v)
+        img = vae.decode(v)
+        img = img.reshape((-1,) + tuple(img.shape[-3:]))[:1]           # first frame
+        lat_h, lat_w = tc["canvas"]
+        from comfy_extras.nodes_minimax_h3 import _resize
+        img = _resize(img, lat_w * STRIDE, lat_h * STRIDE, "center")
+        cache = {}
+
+        def encode(box):
+            if box not in cache:
+                x, y, w, h = (q * STRIDE for q in box)
+                cache[box] = vae.encode(img[:, y:y + h, x:x + w, :])
+            return cache[box]
+        self._rebuild_window_conds(tc, wnoise, wlat, wshapes, a, encode)
+
+    def _rebuild_window_conds(self, tc, wnoise, wlat, wshapes, a, keyframe_latent):
+        tn = wshapes[0][2]
+        for tr in self.tiles:
+            box = tr["box"]
+            kf = [{"resolved_frame_index": 0, "latent": keyframe_latent(box)}]
+            loc = {"box": box, "t": (0, tn), "a": (0, a[1]) if a else None}
+            rn, ri = self._crop_pack(wnoise, wshapes, loc), self._crop_pack(wlat, wshapes, loc)
+            raw = {"positive": comfy.sampler_helpers.convert_cond(_with_keyframes(tc["conds"][tr["src"]], kf))}
+            if "negative" in tr["raw"]:
+                raw["negative"] = [c.copy() for c in tr["raw"]["negative"]]
+            tr["conds"] = self._tara_patch(comfy.samplers.process_conds(self.inner_model, rn, raw, self._device, ri, None,
+                                                                        self._seed, latent_shapes=tr["shapes"]), tr["src"])
+            if tr.get("draw") is not None and getattr(self, "detail_conds", None) is not None:
+                draw = {"positive": comfy.sampler_helpers.convert_cond(
+                    _with_keyframes(self.detail_conds["conds"][tr["src"]], kf))}
+                if "negative" in raw:
+                    draw["negative"] = [c.copy() for c in raw["negative"]]
+                tr["conds_detail"] = self._tara_patch(comfy.samplers.process_conds(
+                    self.inner_model, rn, draw, self._device, ri, None, self._seed, latent_shapes=tr["shapes"]), tr["src"])
+        mp = getattr(self, "model_patcher", None)
+        if mp is not None and hasattr(mp, "model_size"):                  # the VAE may have pushed the DiT out
+            comfy.model_management.load_models_gpu([mp])
 
     # ---- shared region loop: run fn on every region, blend video (space x time) and audio (time)
     def _blend_regions(self, x, fn):
@@ -501,8 +626,39 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
             return t["conds_detail"]
         return t["conds"]
 
+    def _tara_patch(self, conds, region_index):
+        """TARA-H3: align the motion reference clock and attach the temporal attention context to these conds."""
+        cfg = getattr(self, "tara", None)
+        if conds is None or cfg is None or _tara is None:
+            return conds
+        if self.cfg != 1.0:
+            if not getattr(self, "_tara_warned_cfg", False):
+                log.warning("SyncTile TARA: needs cfg 1.0 (the negative branch has no motion reference); disabled.")
+                self._tara_warned_cfg = True
+            return conds
+        conds, reason = _tara.patch_conds(conds, *cfg)
+        seen = getattr(self, "_tara_logged", set())
+        if reason and "reason" not in seen:
+            log.warning("SyncTile TARA: off for region %d: %s", region_index, reason)
+            seen.add("reason")
+        elif not reason and "ok" not in seen:
+            ctx = conds["_tara"]
+            vi, (st_, w_, f_, c_) = cfg
+            log.info("SyncTile TARA-H3 (Anjos 2026): <Video %d> clock aligned, %d motion rows, %d target frames, "
+                     "window %.2fs falloff %.2fs strength %.1f cap %.1f", vi, int(ctx.motion.sum()), len(ctx.frames),
+                     w_, f_, st_, c_)
+            seen.add("ok")
+        self._tara_logged = seen
+        return conds
+
     def _run(self, r, x, timestep, model_options, seed):
         c = self._conds_for(r, timestep)
+        ctx = c.get("_tara")
+        if ctx is not None:
+            model_options = dict(model_options)
+            to = dict(model_options.get("transformer_options", {}))
+            to["optimized_attention_override"] = _tara.make_override(ctx, to.get("optimized_attention_override"))
+            model_options["transformer_options"] = to
         return comfy.samplers.sampling_function(self.inner_model, x, timestep, c.get("negative"), c.get("positive"),
                                                 self.cfg, model_options=model_options, seed=seed)
 
@@ -564,8 +720,15 @@ class SyncTileGuider:
                 "window_frames": ("INT", {"default": 0, "min": 0, "max": 3600, "step": 1, "tooltip":
                                   WINDOW_TIP + " Only used with 'positive'; with tile_conditioning the windows come from that node."}),
                 "window_overlap_frames": ("INT", {"default": 39, "min": 5, "max": 1000, "step": 17, "tooltip": OVERLAP_TIP}),
-                "temporal_mode": ([TEMPORAL_BLEND, TEMPORAL_CARRY], {"default": TEMPORAL_BLEND}),
+                "temporal_mode": ([TEMPORAL_BLEND, TEMPORAL_CARRY, TEMPORAL_GUIDE, TEMPORAL_GUIDE_CLIP], {"default": TEMPORAL_BLEND}),
                 "carry_frames": ("INT", {"default": 21, "min": 1, "max": 200, "step": 4}),
+                "temporal_reference": ("BOOLEAN", {"default": False}),
+                "tara_strength": ("FLOAT", {"default": 2.0, "min": 0.0, "max": 20.0, "step": 0.1}),
+                "tara_window_seconds": ("FLOAT", {"default": 0.2, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "tara_falloff_seconds": ("FLOAT", {"default": 0.25, "min": 0.01, "max": 10.0, "step": 0.01}),
+                "tara_max_penalty": ("FLOAT", {"default": 6.0, "min": 0.0, "max": 30.0, "step": 0.1}),
+                "tara_motion_video": ("INT", {"default": 1, "min": 1, "max": 8}),
+                "freenoise": ("BOOLEAN", {"default": False}),
             },
         }
 
@@ -578,7 +741,9 @@ class SyncTileGuider:
     def get_guider(self, model, tile_width, tile_height, min_overlap, cfg, sync_mode=None, use_refine_seed=False,
                    refine_seed=0, positive=None, negative=None, tile_conditioning=None,
                    tile_conditioning_detail=None, detail_below_sigma=0.85, window_frames=0, window_overlap_frames=39,
-                   temporal_mode=TEMPORAL_BLEND, carry_frames=21):
+                   temporal_mode=TEMPORAL_BLEND, carry_frames=21, temporal_reference=False, tara_strength=2.0,
+                   tara_window_seconds=0.2, tara_falloff_seconds=0.25, tara_max_penalty=6.0, tara_motion_video=1,
+                   freenoise=False):
         if positive is None and tile_conditioning is None:
             raise ValueError("SyncTile Guider: connect either positive or tile_conditioning.")
         if tile_conditioning_detail is not None:
@@ -594,6 +759,13 @@ class SyncTileGuider:
         g.refine_seed = int(refine_seed) if use_refine_seed else None
         g.window_frames, g.window_overlap = int(window_frames or 0), int(window_overlap_frames)
         g.temporal_mode, g.carry_frames = temporal_mode or TEMPORAL_BLEND, int(carry_frames)
+        g.freenoise = bool(freenoise)
+        if temporal_reference:
+            if model.model_options.get("bfs_h3_native_temporal_v1"):
+                raise ValueError("SyncTile: temporal_reference (TARA) is on here and the BFS native temporal node is also on "
+                                 "the model path. Use only one of the two.")
+            g.tara = (int(tara_motion_video), (float(tara_strength), float(tara_window_seconds),
+                                               float(tara_falloff_seconds), float(tara_max_penalty)))
         conds = {"positive": positive if positive is not None else tile_conditioning["conds"][0]}
         if negative is not None and cfg != 1.0:
             conds["negative"] = negative
@@ -848,7 +1020,7 @@ class SyncTileRef2VAConditioning:
                 per_win.setdefault(r["t"], len(k))
             log.info("SyncTile: %d frame guide(s) at %s; guides per window: %s", len(guide_list),
                      [f for _, f in guide_list], list(per_win.values()))
-        return ({"canvas": (lat_h, lat_w), "T": T, "A": A, "tiles": regions, "conds": conds},)
+        return ({"canvas": (lat_h, lat_w), "T": T, "A": A, "tiles": regions, "conds": conds, "vae": vae},)
 
 
 def _check_shared_keyframes(raw, box, n_windows=1):
@@ -910,7 +1082,7 @@ class SyncTileI2VConditioning:
         regions = make_grid(lat_h, lat_w, tile_width, tile_height, min_overlap, T, A,
                             window_frames, window_overlap_frames)
         tw, th = regions[0]["box"][2] * STRIDE, regions[0]["box"][3] * STRIDE
-        out = {"canvas": (lat_h, lat_w), "T": T, "A": A, "tiles": regions}
+        out = {"canvas": (lat_h, lat_w), "T": T, "A": A, "tiles": regions, "vae": vae}
 
         # same geometry as MiniMaxH3ImageToVideo, at canvas size: first = stretch, last = cover-crop
         frames = []
@@ -1115,8 +1287,11 @@ class SyncTileStreamDecodeVideo:
             },
         }
 
-    RETURN_TYPES = ("STRING", "IMAGE")
-    RETURN_NAMES = ("filepath", "images")
+    RETURN_TYPES = ("STRING", "IMAGE", "VIDEO")
+    RETURN_NAMES = ("filepath", "images", "video")
+    OUTPUT_TOOLTIPS = ("Path of the written file.", "Frames as IMAGE (only with image_output on).",
+                       "The written file as VIDEO (file-backed: nodes like RH DLSS5 Enhance stream it in chunks "
+                       "instead of loading it in RAM). None when write_video is off.")
     FUNCTION = "decode"
     OUTPUT_NODE = True
     CATEGORY = "bruxosdovfx/SyncTile"
@@ -1235,13 +1410,27 @@ class SyncTileStreamDecodeVideo:
             if wav and os.path.exists(wav):
                 os.remove(wav)
 
-        images = keep if keep is not None else torch.zeros((1, 64, 64, 3))
+        images = keep                                  # None when image_output is off (no fake 64x64 frame)
         log.info("SyncTile Stream Decode: %d frames %dx%d%s%s", sink.written, W, H,
                  f" -> {path}" if path else "", f", IMAGE {mode}" if keep is not None else "")
         ui = {"text": notes} if notes else {}
         if path:
             ui.update({"images": [{"filename": filename, "subfolder": subfolder, "type": "output"}], "animated": (True,)})
-        return {"ui": ui, "result": (path, images)}
+        return {"ui": ui, "result": (path, images, _video_from_file(path) if path else None)}
+
+
+def _video_from_file(path):
+    """File-backed VIDEO for the written file (streamed by consumers that read get_stream_source())."""
+    try:
+        from comfy_api.latest import InputImpl
+        return InputImpl.VideoFromFile(path)
+    except Exception:
+        try:
+            from comfy_api.input_impl import VideoFromFile
+            return VideoFromFile(path)
+        except Exception as e:                          # very old ComfyUI without the VIDEO type
+            log.warning("SyncTile Stream Decode: no VIDEO type in this ComfyUI (%s); video output is None", e)
+            return None
 
 
 NODE_CLASS_MAPPINGS = {
@@ -1256,6 +1445,27 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "SyncTileI2VConditioningH3": "bruxosdovfx • SyncTile I2V Conditioning (H3)",
     "SyncTileStreamDecodeVideoH3": "bruxosdovfx • SyncTile Stream Decode (H3)",
 }
+
+
+# face crop / stitch for small faces (SAM 3.1)
+try:
+    from . import face_nodes as _face
+except ImportError:
+    import importlib as _il
+    _face = _il.import_module(__name__.rsplit(".", 1)[0] + ".face_nodes") if "." in __name__ else None
+if _face is not None:
+    NODE_CLASS_MAPPINGS.update(_face.NODE_CLASS_MAPPINGS)
+    NODE_DISPLAY_NAME_MAPPINGS.update(_face.NODE_DISPLAY_NAME_MAPPINGS)
+
+# background plate with the real camera motion (experimental)
+try:
+    from . import plate_nodes as _plate
+except ImportError:
+    import importlib as _il
+    _plate = _il.import_module(__name__.rsplit(".", 1)[0] + ".plate_nodes") if "." in __name__ else None
+if _plate is not None:
+    NODE_CLASS_MAPPINGS.update(_plate.NODE_CLASS_MAPPINGS)
+    NODE_DISPLAY_NAME_MAPPINGS.update(_plate.NODE_DISPLAY_NAME_MAPPINGS)
 
 
 # trilingual tooltips (PT / EN / 中文) for every input and node description

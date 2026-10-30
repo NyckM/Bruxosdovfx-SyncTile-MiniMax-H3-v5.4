@@ -1,7 +1,7 @@
 [project]
 name = "bruxosdovfx-synctile"
 description = "bruxosdovfx • SyncTile for MiniMax H3: synchronized space x time tiles, long video, streaming decode."
-version = "5.5.3"
+version = "6.3.0"
 license = { text = "MIT" }
 
 [tool.comfy]
