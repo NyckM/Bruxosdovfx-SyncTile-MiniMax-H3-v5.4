@@ -121,13 +121,37 @@ def time_windows(T, window_frames=0, overlap_frames=39):
     return [(s, L) for s in starts]
 
 
+AUTO_TILE_CELLS = 5120      # ~1.3 MP per tile (1472x896 ~ 5150 cells): what fits a 32 GB card comfortably
+
+
+def auto_tile(lat_h, lat_w, min_overlap, budget=AUTO_TILE_CELLS):
+    """Fewest tiles (nx*ny) whose area fits the budget; tiles share the canvas evenly, so any aspect
+    ratio (16:9, 1:1, 9:16...) gets matching tile shapes. Returns (tile_w, tile_h) in latent cells."""
+    best = None
+    for nx in range(1, 9):
+        for ny in range(1, 9):
+            tw = lat_w if nx == 1 else min(lat_w, math.ceil((lat_w + (nx - 1) * min_overlap) / nx))
+            th = lat_h if ny == 1 else min(lat_h, math.ceil((lat_h + (ny - 1) * min_overlap) / ny))
+            if tw * th > budget:
+                continue
+            key = (nx * ny, abs(math.log((tw / th) / (lat_w / lat_h))))
+            if best is None or key < best[0]:
+                best = (key, tw, th)
+    if best is None:
+        return max(1, int(budget ** 0.5)), max(1, int(budget ** 0.5))
+    return best[1], best[2]
+
+
 def make_grid(lat_h, lat_w, tile_px_w, tile_px_h, min_overlap, T=None, A=None, window_frames=0, overlap_frames=39):
     """Regions in latent units: spatial box x temporal window, with their blend weights.
 
     Each region: box (x, y, w, h), t (t0, tn) in latent tokens, a (a0, an) in audio ticks or None,
     weight (h, w) spatial, tw (tn,) temporal, aw (an,) audio.
     """
-    tw_, th_ = min(tile_px_w // STRIDE, lat_w), min(tile_px_h // STRIDE, lat_h)
+    if not tile_px_w or not tile_px_h:              # 0 = auto: pick the tile size from the canvas
+        tw_, th_ = auto_tile(lat_h, lat_w, min_overlap)
+    else:
+        tw_, th_ = min(tile_px_w // STRIDE, lat_w), min(tile_px_h // STRIDE, lat_h)
     xs, ys = positions(lat_w, tw_, min_overlap), positions(lat_h, th_, min_overlap)
     xspans, yspans = [(x, tw_) for x in xs], [(y, th_) for y in ys]
     if T is None:                                   # space only: the guider fills in the full time span
@@ -689,10 +713,10 @@ class SyncTileGuider:
         return {
             "required": {
                 "model": ("MODEL",),
-                "tile_width": ("INT", {"default": 1472, "min": 256, "max": 8192, "step": 32,
+                "tile_width": ("INT", {"default": 1472, "min": 0, "max": 8192, "step": 32,
                                        "tooltip": "Tile size in pixels. 1472x896 is what SyncTile measured on 24 GB. "
                                                   "A tile larger than the canvas = no spatial tiling."}),
-                "tile_height": ("INT", {"default": 896, "min": 256, "max": 8192, "step": 32}),
+                "tile_height": ("INT", {"default": 896, "min": 0, "max": 8192, "step": 32}),
                 "min_overlap": ("INT", {"default": 16, "min": 2, "max": 64,
                                         "tooltip": "Minimum overlap between tiles, in latent cells (x16 px)."}),
                 "cfg": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 30.0, "step": 0.1,
@@ -922,8 +946,8 @@ class SyncTileRef2VAConditioning:
                                   "tooltip": "Canvas width the tiles will be sampled at (the upscaled latent)."}),
                 "height": ("INT", {"default": 2160, "min": 256, "max": 16384, "step": 16}),
                 "length": ("INT", {"default": 124, "min": 5, "max": 3600}),
-                "tile_width": ("INT", {"default": 1472, "min": 256, "max": 8192, "step": 32}),
-                "tile_height": ("INT", {"default": 896, "min": 256, "max": 8192, "step": 32}),
+                "tile_width": ("INT", {"default": 1472, "min": 0, "max": 8192, "step": 32}),
+                "tile_height": ("INT", {"default": 896, "min": 0, "max": 8192, "step": 32}),
                 "min_overlap": ("INT", {"default": 16, "min": 2, "max": 64}),
                 "ref_video_mode": (["crop", "full"], {"default": "crop",
                                    "tooltip": "crop: each tile sees the matching region of the reference video. "
@@ -1048,8 +1072,8 @@ class SyncTileI2VConditioning:
                 "vae": ("VAE",),
                 "prompt": ("STRING", {"multiline": True, "default": "", "forceInput": True}),
                 "latent": ("LATENT", {"tooltip": "The latent the guider will sample (sets canvas size and length)."}),
-                "tile_width": ("INT", {"default": 1472, "min": 256, "max": 8192, "step": 32}),
-                "tile_height": ("INT", {"default": 896, "min": 256, "max": 8192, "step": 32}),
+                "tile_width": ("INT", {"default": 1472, "min": 0, "max": 8192, "step": 32}),
+                "tile_height": ("INT", {"default": 896, "min": 0, "max": 8192, "step": 32}),
                 "min_overlap": ("INT", {"default": 16, "min": 2, "max": 64}),
                 "qwen_view": (["full", "crop"], {"default": "full", "tooltip":
                               "What the text encoder sees with the prompt.\n"

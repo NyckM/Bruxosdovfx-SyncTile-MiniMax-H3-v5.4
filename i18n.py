@@ -8,10 +8,10 @@ T = {}
 
 # --------------------------------------------------------------------------- shared inputs
 _TILE_W = ("Largura do tile em pixels. O canvas é dividido em tiles que se sobrepõem e são misturados a cada passo. "
-           "1472x896 cabe em 24 GB. Valor maior que a imagem = sem divisão no espaço (ex.: 4096 no estágio 1).",
+           "1472x896 cabe em 24 GB. 0 = AUTO: calcula sozinho pelo tamanho do canvas (16:9, 1:1, 9:16...). Valor maior que a imagem = sem divisão no espaço (ex.: 4096 no estágio 1).",
            "Tile width in pixels. The canvas is split into overlapping tiles blended at every step. 1472x896 fits "
-           "24 GB. A value larger than the image = no spatial split (e.g. 4096 in stage 1).",
-           "图块宽度（像素）。画面被切成相互重叠的图块，每一步都会融合。1472x896 适合 24 GB 显存。"
+           "24 GB. 0 = AUTO: sized from the canvas (16:9, 1:1, 9:16...). A value larger than the image = no spatial split (e.g. 4096 in stage 1).",
+           "图块宽度（像素）。画面被切成相互重叠的图块，每一步都会融合。1472x896 适合 24 GB 显存。0 = 自动（按画面尺寸计算）。"
            "大于画面的数值 = 不做空间切分（例如第一阶段的 4096）。")
 _TILE_H = ("Altura do tile em pixels. Use o mesmo valor no Guider e no Conditioning.",
            "Tile height in pixels. Use the same value on the Guider and the Conditioning node.",
