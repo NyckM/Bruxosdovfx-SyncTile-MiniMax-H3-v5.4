@@ -33,6 +33,7 @@ O vídeo grande ou longo é dividido em **regiões que se sobrepõem** (tiles no
 | **SyncTile Guider (H3)** | Substitui o Basic Guider. Faz a mistura das regiões a cada chamada do modelo. |
 | **SyncTile Ref2VA Conditioning (H3)** | Reference to Video por região: fatia o vídeo de referência por janela, recorta por tile e coloca os frames-guia na janela certa. |
 | **SyncTile I2V Conditioning (H3)** | Image to Video (primeiro/último frame) por região. Sem imagem = texto para vídeo. |
+| **SyncTile Edit Conditioning (Remake / Ripple, H3)** | v6.5: Viggle Remake e WepeNerd H3 Ripple por janela de contexto e tile. Fatia o vídeo fonte por janela, recorta por tile e põe cada imagem editada só na janela do seu frame. Entrada `ripple` lê o Ripple Clip direto. `tile_width/height = 0` = tiles automáticos (v6.4). |
 | **SyncTile Stream Decode (H3)** | Decodifica bloco a bloco e grava direto no arquivo (h265 10-bit, h264, ProRes), sem estourar a RAM. Saída IMAGE opcional para o Save Video Pro. |
 
 ### O workflow (Character/Background Swap longo, v16)

@@ -1492,6 +1492,17 @@ if _plate is not None:
     NODE_DISPLAY_NAME_MAPPINGS.update(_plate.NODE_DISPLAY_NAME_MAPPINGS)
 
 
+# Viggle Remake / H3 Ripple edit conditioning per context window
+try:
+    from . import edit_nodes as _edit
+except ImportError:
+    import importlib as _il
+    _edit = _il.import_module(__name__.rsplit(".", 1)[0] + ".edit_nodes") if "." in __name__ else None
+if _edit is not None:
+    NODE_CLASS_MAPPINGS.update(_edit.NODE_CLASS_MAPPINGS)
+    NODE_DISPLAY_NAME_MAPPINGS.update(_edit.NODE_DISPLAY_NAME_MAPPINGS)
+
+
 # trilingual tooltips (PT / EN / 中文) for every input and node description
 try:
     from . import i18n as _i18n
