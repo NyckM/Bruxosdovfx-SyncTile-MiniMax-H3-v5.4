@@ -121,13 +121,13 @@ def time_windows(T, window_frames=0, overlap_frames=39):
     return [(s, L) for s in starts]
 
 
-AUTO_TILE_CELLS = 5120      # ~1.3 MP per tile (1472x896 ~ 5150 cells): what fits a 32 GB card comfortably
+AUTO_TILE_CELLS = 5160      # ~1.3 MP per tile (1472x896 = 5152 cells): what fits a 32 GB card comfortably
 
 
 def auto_tile(lat_h, lat_w, min_overlap, budget=AUTO_TILE_CELLS):
     """Fewest tiles (nx*ny) whose area fits the budget; tiles share the canvas evenly, so any aspect
     ratio (16:9, 1:1, 9:16...) gets matching tile shapes. Returns (tile_w, tile_h) in latent cells."""
-    best = None
+    best, ok = None, None
     for nx in range(1, 9):
         for ny in range(1, 9):
             tw = lat_w if nx == 1 else min(lat_w, math.ceil((lat_w + (nx - 1) * min_overlap) / nx))
@@ -137,6 +137,9 @@ def auto_tile(lat_h, lat_w, min_overlap, budget=AUTO_TILE_CELLS):
             key = (nx * ny, abs(math.log((tw / th) / (lat_w / lat_h))))
             if best is None or key < best[0]:
                 best = (key, tw, th)
+            if 0.55 <= tw / th <= 1.8 and (ok is None or key < ok[0]):      # no thin strips unless the canvas is one
+                ok = (key, tw, th)
+    best = ok or best
     if best is None:
         return max(1, int(budget ** 0.5)), max(1, int(budget ** 0.5))
     return best[1], best[2]
