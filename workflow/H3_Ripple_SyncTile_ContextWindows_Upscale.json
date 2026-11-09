@@ -1,0 +1,2468 @@
+{
+ "id": "bruxos-v29-regen2k",
+ "revision": 0,
+ "last_node_id": 22,
+ "last_link_id": 33,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "UNETLoader",
+   "pos": [
+    -900,
+    0
+   ],
+   "size": [
+    520,
+    82
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "unet_name",
+     "localized_name": "unet_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "unet_name"
+     }
+    },
+    {
+     "name": "weight_dtype",
+     "localized_name": "weight_dtype",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "weight_dtype"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "MODEL",
+     "localized_name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      1
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "UNETLoader"
+   },
+   "widgets_values": [
+    "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+    "default"
+   ],
+   "title": "H3 FL2VA",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 2,
+   "type": "LoraLoaderModelOnly",
+   "pos": [
+    -900,
+    120
+   ],
+   "size": [
+    520,
+    82
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "model",
+     "localized_name": "model",
+     "type": "MODEL",
+     "link": 1
+    },
+    {
+     "name": "lora_name",
+     "localized_name": "lora_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "lora_name"
+     }
+    },
+    {
+     "name": "strength_model",
+     "localized_name": "strength_model",
+     "type": "FLOAT",
+     "link": null,
+     "widget": {
+      "name": "strength_model"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "MODEL",
+     "localized_name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      2
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "LoraLoaderModelOnly"
+   },
+   "widgets_values": [
+    "minimax\\pika_h3_flex_fl2va_comfy_bf16.safetensors",
+    1
+   ],
+   "title": "Pika H3 Flex LoRA (6 passos)",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 3,
+   "type": "LoraLoaderModelOnly",
+   "pos": [
+    -900,
+    240
+   ],
+   "size": [
+    520,
+    82
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "model",
+     "localized_name": "model",
+     "type": "MODEL",
+     "link": 2
+    },
+    {
+     "name": "lora_name",
+     "localized_name": "lora_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "lora_name"
+     }
+    },
+    {
+     "name": "strength_model",
+     "localized_name": "strength_model",
+     "type": "FLOAT",
+     "link": null,
+     "widget": {
+      "name": "strength_model"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "MODEL",
+     "localized_name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      7,
+      26
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "LoraLoaderModelOnly"
+   },
+   "widgets_values": [
+    "minimax\\minimax_H3_Ripple-v1.safetensors",
+    1
+   ],
+   "title": "H3 Ripple LoRA",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 4,
+   "type": "CLIPLoader",
+   "pos": [
+    -900,
+    380
+   ],
+   "size": [
+    520,
+    110
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "clip_name",
+     "localized_name": "clip_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "clip_name"
+     }
+    },
+    {
+     "name": "type",
+     "localized_name": "type",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "type"
+     }
+    },
+    {
+     "name": "device",
+     "localized_name": "device",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "device"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "CLIP",
+     "localized_name": "CLIP",
+     "type": "CLIP",
+     "links": [
+      3,
+      21
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "CLIPLoader"
+   },
+   "widgets_values": [
+    "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+    "minimax",
+    "default"
+   ],
+   "title": "Qwen3-VL text encoder",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 5,
+   "type": "VAELoader",
+   "pos": [
+    -900,
+    530
+   ],
+   "size": [
+    520,
+    60
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "vae_name",
+     "localized_name": "vae_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "vae_name"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "VAE",
+     "localized_name": "VAE",
+     "type": "VAE",
+     "links": [
+      4,
+      15,
+      22
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "VAELoader"
+   },
+   "widgets_values": [
+    "Minimax\\minimax_h3_sol_vae_fp16.safetensors"
+   ],
+   "title": "VAE vídeo",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 6,
+   "type": "PrimitiveStringMultiline",
+   "pos": [
+    -900,
+    700
+   ],
+   "size": [
+    520,
+    300
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "value",
+     "localized_name": "value",
+     "type": "STRING",
+     "link": null,
+     "widget": {
+      "name": "value"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "STRING",
+     "localized_name": "STRING",
+     "type": "STRING",
+     "links": [
+      5,
+      23
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "PrimitiveStringMultiline"
+   },
+   "widgets_values": [
+    "Edit propagation: each edited frame shows exactly how that moment of the video should look after the edit. Apply the same changes to every frame of the clip, before, between and after the edited frames, so the edit stays consistent through the whole video. Keep the guide video's motion, timing, camera movement, composition and all unedited content unchanged. "
+   ],
+   "title": "Prompt do Ripple (deixe o padrão)",
+   "color": "#322",
+   "bgcolor": "#533"
+  },
+  {
+   "id": 7,
+   "type": "WN_RippleClip",
+   "pos": [
+    -1700,
+    0
+   ],
+   "size": [
+    640,
+    1161
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "video",
+     "name": "video",
+     "type": "COMBO",
+     "widget": {
+      "name": "video"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "duration",
+     "name": "duration",
+     "type": "FLOAT",
+     "widget": {
+      "name": "duration"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "megapixels",
+     "name": "megapixels",
+     "type": "FLOAT",
+     "widget": {
+      "name": "megapixels"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "window_start",
+     "name": "window_start",
+     "type": "INT",
+     "widget": {
+      "name": "window_start"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "markers",
+     "name": "markers",
+     "type": "STRING",
+     "widget": {
+      "name": "markers"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "crop",
+     "name": "crop",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "crop"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "allow_upscale",
+     "name": "allow_upscale",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "allow_upscale"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "resize_method",
+     "name": "resize_method",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "resize_method"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "output_width",
+     "name": "output_width",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "output_width"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "output_height",
+     "name": "output_height",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "output_height"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "upload",
+     "name": "upload",
+     "type": "IMAGEUPLOAD",
+     "widget": {
+      "name": "upload"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "frames_to_edit",
+     "name": "frames_to_edit",
+     "type": "IMAGE",
+     "links": []
+    },
+    {
+     "localized_name": "ripple",
+     "name": "ripple",
+     "type": "WN_RIPPLE",
+     "links": [
+      6,
+      24
+     ]
+    },
+    {
+     "localized_name": "source_window",
+     "name": "source_window",
+     "type": "IMAGE",
+     "links": []
+    },
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "type": "AUDIO",
+     "links": [
+      16
+     ]
+    },
+    {
+     "localized_name": "anchor_1",
+     "name": "anchor_1",
+     "type": "IMAGE",
+     "links": []
+    }
+   ],
+   "title": "1 · Ripple Clip — escolha o trecho, marque os frames e anexe as edições",
+   "properties": {
+    "aux_id": "WepeNerd/ComfyUI-WepeNerd",
+    "ver": "1b759f031430781c50ac344f592d6b174a1ec276",
+    "Node name for S&R": "WN_RippleClip",
+    "wn_ripple": {
+     "window_start": 0,
+     "markers": "[{\"id\":1,\"frame\":0,\"edited\":\"ripple_edits/Clock_FirstFRAME.png\",\"edited_at\":0,\"edited_crop\":[0,0,1,1],\"edited_source\":{\"video\":\"animate-image1-using-513be5e0.mp4\",\"version\":\"d15778-18e4dc7b38c47ee8\"}}]",
+     "duration": 6.58,
+     "megapixels": 1,
+     "crop": "",
+     "allow_upscale": false,
+     "resize_method": "lanczos",
+     "output_width": 0,
+     "output_height": 0
+    }
+   },
+   "widgets_values": [
+    "animate-image1-using-513be5e0.mp4",
+    6.58,
+    1,
+    0,
+    "[{\"id\":1,\"frame\":0,\"edited\":\"ripple_edits/Clock_FirstFRAME.png\",\"edited_at\":0,\"edited_crop\":[0,0,1,1],\"edited_source\":{\"video\":\"animate-image1-using-513be5e0.mp4\",\"version\":\"d15778-18e4dc7b38c47ee8\"}}]",
+    "",
+    false,
+    "lanczos",
+    0,
+    0,
+    "image",
+    ""
+   ],
+   "widgets_values_named": {
+    "video": "animate-image1-using-513be5e0.mp4",
+    "duration": 6.58,
+    "megapixels": 1,
+    "window_start": 0,
+    "markers": "[{\"id\":1,\"frame\":0,\"edited\":\"ripple_edits/Clock_FirstFRAME.png\",\"edited_at\":0,\"edited_crop\":[0,0,1,1],\"edited_source\":{\"video\":\"animate-image1-using-513be5e0.mp4\",\"version\":\"d15778-18e4dc7b38c47ee8\"}}]",
+    "crop": "",
+    "allow_upscale": false,
+    "resize_method": "lanczos",
+    "output_width": 0,
+    "output_height": 0,
+    "upload": "image",
+    "ripple_markers": ""
+   },
+   "color": "#282830",
+   "bgcolor": "#141419"
+  },
+  {
+   "id": 8,
+   "type": "SyncTileEditConditioningH3",
+   "pos": [
+    -420,
+    0
+   ],
+   "size": [
+    440,
+    330
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "clip",
+     "localized_name": "clip",
+     "type": "CLIP",
+     "link": 3
+    },
+    {
+     "name": "vae",
+     "localized_name": "vae",
+     "type": "VAE",
+     "link": 4
+    },
+    {
+     "name": "prompt",
+     "localized_name": "prompt",
+     "type": "STRING",
+     "link": 5
+    },
+    {
+     "name": "mode",
+     "localized_name": "mode",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "mode"
+     }
+    },
+    {
+     "name": "tile_width",
+     "localized_name": "tile_width",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "tile_width"
+     }
+    },
+    {
+     "name": "tile_height",
+     "localized_name": "tile_height",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "tile_height"
+     }
+    },
+    {
+     "name": "min_overlap",
+     "localized_name": "min_overlap",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "min_overlap"
+     }
+    },
+    {
+     "name": "source",
+     "localized_name": "source",
+     "type": "IMAGE",
+     "link": null
+    },
+    {
+     "name": "latent",
+     "localized_name": "latent",
+     "type": "LATENT",
+     "link": null
+    },
+    {
+     "name": "ripple",
+     "localized_name": "ripple",
+     "type": "WN_RIPPLE",
+     "link": 6
+    },
+    {
+     "name": "edit_images",
+     "localized_name": "edit_images",
+     "type": "IMAGE",
+     "link": null
+    },
+    {
+     "name": "edit_frames",
+     "localized_name": "edit_frames",
+     "type": "STRING",
+     "link": null,
+     "widget": {
+      "name": "edit_frames"
+     }
+    },
+    {
+     "name": "window_frames",
+     "localized_name": "window_frames",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "window_frames"
+     }
+    },
+    {
+     "name": "window_overlap_frames",
+     "localized_name": "window_overlap_frames",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "window_overlap_frames"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "tile_conditioning",
+     "localized_name": "tile_conditioning",
+     "type": "SYNCTILE_CONDS",
+     "links": [
+      8
+     ]
+    },
+    {
+     "name": "latent",
+     "localized_name": "latent",
+     "type": "LATENT",
+     "links": [
+      13
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "SyncTileEditConditioningH3"
+   },
+   "widgets_values": [
+    "ripple",
+    0,
+    0,
+    16,
+    "",
+    124,
+    39
+   ],
+   "title": "SyncTile Edit Conditioning — RIPPLE (por janela × tile)",
+   "color": "#2a2a4a",
+   "bgcolor": "#1a1a33"
+  },
+  {
+   "id": 9,
+   "type": "SyncTileGuiderH3",
+   "pos": [
+    140,
+    0
+   ],
+   "size": [
+    380,
+    594
+   ],
+   "flags": {},
+   "order": 4,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 7
+    },
+    {
+     "localized_name": "positive",
+     "name": "positive",
+     "shape": 7,
+     "type": "CONDITIONING",
+     "link": null
+    },
+    {
+     "localized_name": "negative",
+     "name": "negative",
+     "shape": 7,
+     "type": "CONDITIONING",
+     "link": null
+    },
+    {
+     "localized_name": "tile_conditioning",
+     "name": "tile_conditioning",
+     "shape": 7,
+     "type": "SYNCTILE_CONDS",
+     "link": 8
+    },
+    {
+     "localized_name": "tile_conditioning_detail",
+     "name": "tile_conditioning_detail",
+     "shape": 7,
+     "type": "SYNCTILE_CONDS",
+     "link": null
+    },
+    {
+     "localized_name": "tile_width",
+     "name": "tile_width",
+     "type": "INT",
+     "widget": {
+      "name": "tile_width"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tile_height",
+     "name": "tile_height",
+     "type": "INT",
+     "widget": {
+      "name": "tile_height"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "min_overlap",
+     "name": "min_overlap",
+     "type": "INT",
+     "widget": {
+      "name": "min_overlap"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "cfg",
+     "name": "cfg",
+     "type": "FLOAT",
+     "widget": {
+      "name": "cfg"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "sync_mode",
+     "name": "sync_mode",
+     "type": "COMBO",
+     "widget": {
+      "name": "sync_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "use_refine_seed",
+     "name": "use_refine_seed",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "use_refine_seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "refine_seed",
+     "name": "refine_seed",
+     "type": "INT",
+     "widget": {
+      "name": "refine_seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "detail_below_sigma",
+     "name": "detail_below_sigma",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "detail_below_sigma"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "window_frames",
+     "name": "window_frames",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "window_frames"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "window_overlap_frames",
+     "name": "window_overlap_frames",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "window_overlap_frames"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "temporal_mode",
+     "name": "temporal_mode",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "temporal_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "carry_frames",
+     "name": "carry_frames",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "carry_frames"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "temporal_reference",
+     "name": "temporal_reference",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "temporal_reference"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_strength",
+     "name": "tara_strength",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "tara_strength"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_window_seconds",
+     "name": "tara_window_seconds",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "tara_window_seconds"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_falloff_seconds",
+     "name": "tara_falloff_seconds",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "tara_falloff_seconds"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_max_penalty",
+     "name": "tara_max_penalty",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "tara_max_penalty"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_motion_video",
+     "name": "tara_motion_video",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "tara_motion_video"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "freenoise",
+     "name": "freenoise",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "freenoise"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "label": "GUIDER",
+     "localized_name": "GUIDER",
+     "name": "GUIDER",
+     "type": "GUIDER",
+     "links": [
+      10
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "SyncTileGuiderH3"
+   },
+   "widgets_values": [
+    0,
+    0,
+    16,
+    1,
+    "per model call",
+    false,
+    0,
+    "fixed",
+    1,
+    0,
+    39,
+    "guide from previous window (latent clip)",
+    22,
+    false,
+    0,
+    0.2,
+    0.25,
+    0,
+    1,
+    false
+   ],
+   "widgets_values_named": {
+    "tile_width": 1440,
+    "tile_height": 896,
+    "min_overlap": 16,
+    "cfg": 1,
+    "sync_mode": "per model call",
+    "use_refine_seed": false,
+    "refine_seed": 0,
+    "control_after_generate": "fixed",
+    "detail_below_sigma": 1,
+    "window_frames": 0,
+    "window_overlap_frames": 39,
+    "temporal_mode": "blend windows (joint)",
+    "carry_frames": 1,
+    "temporal_reference": false,
+    "tara_strength": 0,
+    "tara_window_seconds": 0.2,
+    "tara_falloff_seconds": 0.25,
+    "tara_max_penalty": 0,
+    "tara_motion_video": 1,
+    "freenoise": true
+   },
+   "color": "#2a4a2a",
+   "bgcolor": "#1a2a1a",
+   "title": "SyncTile Guider — tiles AUTO × janelas de contexto (TARA off)"
+  },
+  {
+   "id": 10,
+   "type": "RandomNoise",
+   "pos": [
+    600,
+    0
+   ],
+   "size": [
+    300,
+    82
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "noise_seed",
+     "localized_name": "noise_seed",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "noise_seed"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "NOISE",
+     "localized_name": "NOISE",
+     "type": "NOISE",
+     "links": [
+      9,
+      28
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "RandomNoise"
+   },
+   "widgets_values": [
+    42,
+    "fixed"
+   ],
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 11,
+   "type": "KSamplerSelect",
+   "pos": [
+    600,
+    120
+   ],
+   "size": [
+    300,
+    60
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "sampler_name",
+     "localized_name": "sampler_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "sampler_name"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "SAMPLER",
+     "localized_name": "SAMPLER",
+     "type": "SAMPLER",
+     "links": [
+      11,
+      30
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "KSamplerSelect"
+   },
+   "widgets_values": [
+    "lcm"
+   ],
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 12,
+   "type": "ManualSigmas",
+   "pos": [
+    600,
+    220
+   ],
+   "size": [
+    380,
+    90
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "sigmas",
+     "localized_name": "sigmas",
+     "type": "STRING",
+     "link": null,
+     "widget": {
+      "name": "sigmas"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "SIGMAS",
+     "localized_name": "SIGMAS",
+     "type": "SIGMAS",
+     "links": [
+      12
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "ManualSigmas"
+   },
+   "widgets_values": [
+    "1.0, 0.972973, 0.923077, 0.8, 0.571429, 0.333333, 0.0"
+   ],
+   "title": "Sigmas (6 passos)",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 13,
+   "type": "SamplerCustomAdvanced",
+   "pos": [
+    1040,
+    0
+   ],
+   "size": [
+    300,
+    120
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "noise",
+     "localized_name": "noise",
+     "type": "NOISE",
+     "link": 9
+    },
+    {
+     "name": "guider",
+     "localized_name": "guider",
+     "type": "GUIDER",
+     "link": 10
+    },
+    {
+     "name": "sampler",
+     "localized_name": "sampler",
+     "type": "SAMPLER",
+     "link": 11
+    },
+    {
+     "name": "sigmas",
+     "localized_name": "sigmas",
+     "type": "SIGMAS",
+     "link": 12
+    },
+    {
+     "name": "latent_image",
+     "localized_name": "latent_image",
+     "type": "LATENT",
+     "link": 13
+    }
+   ],
+   "outputs": [
+    {
+     "name": "output",
+     "localized_name": "output",
+     "type": "LATENT",
+     "links": [
+      17
+     ]
+    },
+    {
+     "name": "denoised_output",
+     "localized_name": "denoised_output",
+     "type": "LATENT",
+     "links": []
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "SamplerCustomAdvanced"
+   },
+   "widgets_values": [],
+   "title": "Estágio 1 — gerar (janelas de contexto)",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 14,
+   "type": "SyncTileStreamDecodeVideoH3",
+   "pos": [
+    1040,
+    180
+   ],
+   "size": [
+    555.6783203125,
+    218
+   ],
+   "flags": {},
+   "order": 6,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "samples",
+     "name": "samples",
+     "type": "LATENT",
+     "link": 33
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "type": "VAE",
+     "link": 15
+    },
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": 16
+    },
+    {
+     "localized_name": "filename_prefix",
+     "name": "filename_prefix",
+     "type": "STRING",
+     "widget": {
+      "name": "filename_prefix"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "fps",
+     "name": "fps",
+     "type": "FLOAT",
+     "widget": {
+      "name": "fps"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "codec",
+     "name": "codec",
+     "type": "COMBO",
+     "widget": {
+      "name": "codec"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "crf",
+     "name": "crf",
+     "type": "INT",
+     "widget": {
+      "name": "crf"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "image_output",
+     "name": "image_output",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "image_output"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "write_video",
+     "name": "write_video",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "write_video"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "filepath",
+     "name": "filepath",
+     "type": "STRING",
+     "links": []
+    },
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "links": []
+    },
+    {
+     "localized_name": "video",
+     "name": "video",
+     "type": "VIDEO",
+     "links": []
+    }
+   ],
+   "title": "bruxosdovfx • SyncTile Stream Decode → arquivo (resolução do estágio 2)",
+   "properties": {
+    "Node name for S&R": "SyncTileStreamDecodeVideoH3"
+   },
+   "widgets_values": [
+    "SyncTile/Ripple_edit_up",
+    24,
+    "h265 10-bit (.mp4)",
+    14,
+    "off",
+    true
+   ],
+   "widgets_values_named": {
+    "filename_prefix": "SyncTile/Pika_H3_Flex_t2v",
+    "fps": 24,
+    "codec": "h265 10-bit (.mp4)",
+    "crf": 3,
+    "image_output": "full resolution",
+    "write_video": true
+   },
+   "color": "#2a4a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 15,
+   "type": "Note",
+   "pos": [
+    -1700,
+    1300
+   ],
+   "size": [
+    900,
+    700
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [],
+   "properties": {
+    "Node name for S&R": "Note"
+   },
+   "widgets_values": [
+    "H3 Ripple (WepeNerd) × SyncTile · bruxosdovfx\nPT\n• Fluxo igual: 1) Ripple Clip — escolha o trecho (duration pode ir até 3592 frames), marque os frames e anexe a imagem editada em cada marcador; 2) rode.\n• O que mudou: o \"SyncTile Edit Conditioning (Ripple)\" lê o Ripple Clip direto (entrada ripple), monta o guia da janela original no primeiro frame + cada frame editado, e refaz isso POR JANELA DE CONTEXTO (124 frames, sobreposição 39) e POR TILE (automático). Cada marcador só entra na janela que contém o seu frame; as outras janelas seguem a anterior ('guide from previous window (latent clip)').\n• Receita: Pika H3 Flex LoRA 1.0 (acelerador) + Ripple LoRA 1.0, sampler lcm e sigmas do Pika de 6 passos (1.0, 0.972973, 0.923077, 0.8, 0.571429, 0.333333, 0). O original usava res_multistep com 20 passos (50 min); isto roda ~3× mais rápido. Para o fluxo antigo, desligue o Pika LoRA e use BasicScheduler 20/res_multistep.\n• UPSCALE PASS (v2): o estágio 1 gera na resolução do Ripple Clip (megapixels do clip); o Latent Upscaler 3D amplia para 3.7 MP (troque 'megapixels' no nó roxo) e o estágio 2 refaz o Ripple Conditioning no canvas ampliado (fonte e edições redimensionadas) com tiles AUTO × janelas e a cauda do Pika (0.8 → 0). Para 1 MP → ~3.7 MP use megapixels do Ripple Clip = 1.\n• Saída: Stream Decode grava o arquivo direto (h265 10-bit) com o áudio do trecho original. Não há a comparação lado a lado do Ripple Output (precisaria carregar todos os frames na memória).\n• Dica: marque ao menos um frame editado por ~5 s de vídeo; em trechos longos sem marcador a janela só segue a anterior.\n• Precisa: bruxosdovfx-SyncTile ≥ 6.5, ComfyUI-WepeNerd.\nEN: Ripple Clip is read directly; source guide + edited frames are rebuilt per context window and per tile; Pika lcm 6-step recipe; Stream Decode writes the file with the source audio.\n中文：直接读取 Ripple Clip；按上下文窗口与图块重建源引导和编辑帧；Pika lcm 6 步配方；流式解码输出并保留源音频。"
+   ],
+   "title": "LEIA-ME — H3 Ripple × SyncTile",
+   "color": "#432",
+   "bgcolor": "#653"
+  },
+  {
+   "id": 16,
+   "type": "LTXVSeparateAVLatent",
+   "pos": [
+    1040,
+    420
+   ],
+   "size": [
+    215.7955078125,
+    46
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "av_latent",
+     "name": "av_latent",
+     "type": "LATENT",
+     "link": 17
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "video_latent",
+     "name": "video_latent",
+     "type": "LATENT",
+     "links": [
+      18
+     ]
+    },
+    {
+     "localized_name": "audio_latent",
+     "name": "audio_latent",
+     "type": "LATENT",
+     "links": [
+      20
+     ]
+    }
+   ],
+   "title": "Separar AV (estágio 1)",
+   "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.39.1",
+    "Node name for S&R": "LTXVSeparateAVLatent",
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {},
+     "version": "7.8"
+    }
+   },
+   "color": "#282830",
+   "bgcolor": "#141419"
+  },
+  {
+   "id": 17,
+   "type": "MinimaxH3LatentUpscaler3D",
+   "pos": [
+    1040,
+    560
+   ],
+   "size": [
+    686.728267604254,
+    310.11964169718453
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "latent",
+     "name": "latent",
+     "type": "*",
+     "link": 18
+    },
+    {
+     "localized_name": "model_name",
+     "name": "model_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "model_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "mode",
+     "name": "mode",
+     "type": "COMFY_DYNAMICCOMBO_V3",
+     "widget": {
+      "name": "mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "megapixels",
+     "name": "mode.megapixels",
+     "type": "FLOAT",
+     "widget": {
+      "name": "mode.megapixels"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "align",
+     "name": "align",
+     "type": "INT",
+     "widget": {
+      "name": "align"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "enable_temporal_chunking",
+     "name": "enable_temporal_chunking",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "enable_temporal_chunking"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "force_unload",
+     "name": "force_unload",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "force_unload"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "device",
+     "name": "device",
+     "type": "COMBO",
+     "widget": {
+      "name": "device"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "precision",
+     "name": "precision",
+     "type": "COMBO",
+     "widget": {
+      "name": "precision"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "latent",
+     "name": "latent",
+     "type": "*",
+     "links": [
+      19
+     ]
+    }
+   ],
+   "title": "Upscale pass: Latent Upscaler 3D (megapixels)",
+   "properties": {
+    "aux_id": "LBH-123-AI/Comfyui_Minimax_h3_latent_Upscaler",
+    "ver": "40316cf008b2fd8663263270669eb4da23f89d2c",
+    "Node name for S&R": "MinimaxH3LatentUpscaler3D",
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {},
+     "version": "7.8"
+    }
+   },
+   "widgets_values": [
+    "minimax_h3_latent_upscaler_3d_fp16_V2.safetensors",
+    "megapixels",
+    3.7,
+    32,
+    true,
+    false,
+    "cuda",
+    "fp16"
+   ],
+   "color": "#1c223c",
+   "bgcolor": "#141419"
+  },
+  {
+   "id": 18,
+   "type": "LTXVConcatAVLatent",
+   "pos": [
+    1400,
+    560
+   ],
+   "size": [
+    203.812109375,
+    46
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "video_latent",
+     "name": "video_latent",
+     "type": "LATENT",
+     "link": 19
+    },
+    {
+     "localized_name": "audio_latent",
+     "name": "audio_latent",
+     "type": "LATENT",
+     "link": 20
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "latent",
+     "name": "latent",
+     "type": "LATENT",
+     "links": [
+      25,
+      32
+     ]
+    }
+   ],
+   "title": "Concat AV Latent (estágio 2)",
+   "properties": {
+    "cnr_id": "comfy-core",
+    "ver": "0.39.1",
+    "Node name for S&R": "LTXVConcatAVLatent",
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {},
+     "version": "7.8"
+    }
+   },
+   "color": "#282830",
+   "bgcolor": "#141419"
+  },
+  {
+   "id": 19,
+   "type": "SyncTileEditConditioningH3",
+   "pos": [
+    1400,
+    0
+   ],
+   "size": [
+    440,
+    330
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "clip",
+     "localized_name": "clip",
+     "type": "CLIP",
+     "link": 21
+    },
+    {
+     "name": "vae",
+     "localized_name": "vae",
+     "type": "VAE",
+     "link": 22
+    },
+    {
+     "name": "prompt",
+     "localized_name": "prompt",
+     "type": "STRING",
+     "link": 23
+    },
+    {
+     "name": "mode",
+     "localized_name": "mode",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "mode"
+     }
+    },
+    {
+     "name": "tile_width",
+     "localized_name": "tile_width",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "tile_width"
+     }
+    },
+    {
+     "name": "tile_height",
+     "localized_name": "tile_height",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "tile_height"
+     }
+    },
+    {
+     "name": "min_overlap",
+     "localized_name": "min_overlap",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "min_overlap"
+     }
+    },
+    {
+     "name": "source",
+     "localized_name": "source",
+     "type": "IMAGE",
+     "link": null
+    },
+    {
+     "name": "latent",
+     "localized_name": "latent",
+     "type": "LATENT",
+     "link": 25
+    },
+    {
+     "name": "ripple",
+     "localized_name": "ripple",
+     "type": "WN_RIPPLE",
+     "link": 24
+    },
+    {
+     "name": "edit_images",
+     "localized_name": "edit_images",
+     "type": "IMAGE",
+     "link": null
+    },
+    {
+     "name": "edit_frames",
+     "localized_name": "edit_frames",
+     "type": "STRING",
+     "link": null,
+     "widget": {
+      "name": "edit_frames"
+     }
+    },
+    {
+     "name": "window_frames",
+     "localized_name": "window_frames",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "window_frames"
+     }
+    },
+    {
+     "name": "window_overlap_frames",
+     "localized_name": "window_overlap_frames",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "window_overlap_frames"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "tile_conditioning",
+     "localized_name": "tile_conditioning",
+     "type": "SYNCTILE_CONDS",
+     "links": [
+      27
+     ]
+    },
+    {
+     "name": "latent",
+     "localized_name": "latent",
+     "type": "LATENT",
+     "links": []
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "SyncTileEditConditioningH3"
+   },
+   "widgets_values": [
+    "ripple",
+    0,
+    0,
+    16,
+    "",
+    124,
+    39
+   ],
+   "title": "SyncTile Edit Conditioning — RIPPLE (estágio 2, canvas ampliado)",
+   "color": "#2a2a4a",
+   "bgcolor": "#1a1a33"
+  },
+  {
+   "id": 20,
+   "type": "SyncTileGuiderH3",
+   "pos": [
+    1760,
+    0
+   ],
+   "size": [
+    380,
+    594
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 26
+    },
+    {
+     "localized_name": "positive",
+     "name": "positive",
+     "shape": 7,
+     "type": "CONDITIONING",
+     "link": null
+    },
+    {
+     "localized_name": "negative",
+     "name": "negative",
+     "shape": 7,
+     "type": "CONDITIONING",
+     "link": null
+    },
+    {
+     "localized_name": "tile_conditioning",
+     "name": "tile_conditioning",
+     "shape": 7,
+     "type": "SYNCTILE_CONDS",
+     "link": 27
+    },
+    {
+     "localized_name": "tile_conditioning_detail",
+     "name": "tile_conditioning_detail",
+     "shape": 7,
+     "type": "SYNCTILE_CONDS",
+     "link": null
+    },
+    {
+     "localized_name": "tile_width",
+     "name": "tile_width",
+     "type": "INT",
+     "widget": {
+      "name": "tile_width"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tile_height",
+     "name": "tile_height",
+     "type": "INT",
+     "widget": {
+      "name": "tile_height"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "min_overlap",
+     "name": "min_overlap",
+     "type": "INT",
+     "widget": {
+      "name": "min_overlap"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "cfg",
+     "name": "cfg",
+     "type": "FLOAT",
+     "widget": {
+      "name": "cfg"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "sync_mode",
+     "name": "sync_mode",
+     "type": "COMBO",
+     "widget": {
+      "name": "sync_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "use_refine_seed",
+     "name": "use_refine_seed",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "use_refine_seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "refine_seed",
+     "name": "refine_seed",
+     "type": "INT",
+     "widget": {
+      "name": "refine_seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "detail_below_sigma",
+     "name": "detail_below_sigma",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "detail_below_sigma"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "window_frames",
+     "name": "window_frames",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "window_frames"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "window_overlap_frames",
+     "name": "window_overlap_frames",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "window_overlap_frames"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "temporal_mode",
+     "name": "temporal_mode",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "temporal_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "carry_frames",
+     "name": "carry_frames",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "carry_frames"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "temporal_reference",
+     "name": "temporal_reference",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "temporal_reference"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_strength",
+     "name": "tara_strength",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "tara_strength"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_window_seconds",
+     "name": "tara_window_seconds",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "tara_window_seconds"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_falloff_seconds",
+     "name": "tara_falloff_seconds",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "tara_falloff_seconds"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_max_penalty",
+     "name": "tara_max_penalty",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "tara_max_penalty"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_motion_video",
+     "name": "tara_motion_video",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "tara_motion_video"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "freenoise",
+     "name": "freenoise",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "freenoise"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "label": "GUIDER",
+     "localized_name": "GUIDER",
+     "name": "GUIDER",
+     "type": "GUIDER",
+     "links": [
+      29
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "SyncTileGuiderH3"
+   },
+   "widgets_values": [
+    0,
+    0,
+    16,
+    1,
+    "per model call",
+    false,
+    0,
+    "fixed",
+    1,
+    0,
+    39,
+    "blend windows (joint)",
+    1,
+    false,
+    0,
+    0.2,
+    0.25,
+    0,
+    1,
+    true
+   ],
+   "color": "#2a4a2a",
+   "bgcolor": "#1a2a1a",
+   "title": "SyncTile Guider — estágio 2 (tiles AUTO × janelas)"
+  },
+  {
+   "id": 21,
+   "type": "ManualSigmas",
+   "pos": [
+    1760,
+    640
+   ],
+   "size": [
+    380,
+    90
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "sigmas",
+     "localized_name": "sigmas",
+     "type": "STRING",
+     "link": null,
+     "widget": {
+      "name": "sigmas"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "SIGMAS",
+     "localized_name": "SIGMAS",
+     "type": "SIGMAS",
+     "links": [
+      31
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "ManualSigmas"
+   },
+   "widgets_values": [
+    "0.8, 0.571429, 0.333333, 0"
+   ],
+   "title": "Estágio 2: cauda do Pika (refino, lcm)",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 22,
+   "type": "SamplerCustomAdvanced",
+   "pos": [
+    2120,
+    0
+   ],
+   "size": [
+    300,
+    120
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "noise",
+     "localized_name": "noise",
+     "type": "NOISE",
+     "link": 28
+    },
+    {
+     "name": "guider",
+     "localized_name": "guider",
+     "type": "GUIDER",
+     "link": 29
+    },
+    {
+     "name": "sampler",
+     "localized_name": "sampler",
+     "type": "SAMPLER",
+     "link": 30
+    },
+    {
+     "name": "sigmas",
+     "localized_name": "sigmas",
+     "type": "SIGMAS",
+     "link": 31
+    },
+    {
+     "name": "latent_image",
+     "localized_name": "latent_image",
+     "type": "LATENT",
+     "link": 32
+    }
+   ],
+   "outputs": [
+    {
+     "name": "output",
+     "localized_name": "output",
+     "type": "LATENT",
+     "links": [
+      33
+     ]
+    },
+    {
+     "name": "denoised_output",
+     "localized_name": "denoised_output",
+     "type": "LATENT",
+     "links": []
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "SamplerCustomAdvanced"
+   },
+   "widgets_values": [],
+   "title": "Refinar estágio 2 (janelas de contexto)",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  }
+ ],
+ "links": [
+  [
+   1,
+   1,
+   0,
+   2,
+   0,
+   "MODEL"
+  ],
+  [
+   2,
+   2,
+   0,
+   3,
+   0,
+   "MODEL"
+  ],
+  [
+   3,
+   4,
+   0,
+   8,
+   0,
+   "CLIP"
+  ],
+  [
+   4,
+   5,
+   0,
+   8,
+   1,
+   "VAE"
+  ],
+  [
+   5,
+   6,
+   0,
+   8,
+   2,
+   "STRING"
+  ],
+  [
+   6,
+   7,
+   1,
+   8,
+   9,
+   "WN_RIPPLE"
+  ],
+  [
+   7,
+   3,
+   0,
+   9,
+   0,
+   "MODEL"
+  ],
+  [
+   8,
+   8,
+   0,
+   9,
+   3,
+   "SYNCTILE_CONDS"
+  ],
+  [
+   9,
+   10,
+   0,
+   13,
+   0,
+   "NOISE"
+  ],
+  [
+   10,
+   9,
+   0,
+   13,
+   1,
+   "GUIDER"
+  ],
+  [
+   11,
+   11,
+   0,
+   13,
+   2,
+   "SAMPLER"
+  ],
+  [
+   12,
+   12,
+   0,
+   13,
+   3,
+   "SIGMAS"
+  ],
+  [
+   13,
+   8,
+   1,
+   13,
+   4,
+   "LATENT"
+  ],
+  [
+   15,
+   5,
+   0,
+   14,
+   1,
+   "VAE"
+  ],
+  [
+   16,
+   7,
+   3,
+   14,
+   2,
+   "AUDIO"
+  ],
+  [
+   17,
+   13,
+   0,
+   16,
+   0,
+   "LATENT"
+  ],
+  [
+   18,
+   16,
+   0,
+   17,
+   0,
+   "LATENT"
+  ],
+  [
+   19,
+   17,
+   0,
+   18,
+   0,
+   "*"
+  ],
+  [
+   20,
+   16,
+   1,
+   18,
+   1,
+   "LATENT"
+  ],
+  [
+   21,
+   4,
+   0,
+   19,
+   0,
+   "CLIP"
+  ],
+  [
+   22,
+   5,
+   0,
+   19,
+   1,
+   "VAE"
+  ],
+  [
+   23,
+   6,
+   0,
+   19,
+   2,
+   "STRING"
+  ],
+  [
+   24,
+   7,
+   1,
+   19,
+   9,
+   "WN_RIPPLE"
+  ],
+  [
+   25,
+   18,
+   0,
+   19,
+   8,
+   "LATENT"
+  ],
+  [
+   26,
+   3,
+   0,
+   20,
+   0,
+   "MODEL"
+  ],
+  [
+   27,
+   19,
+   0,
+   20,
+   3,
+   "SYNCTILE_CONDS"
+  ],
+  [
+   28,
+   10,
+   0,
+   22,
+   0,
+   "NOISE"
+  ],
+  [
+   29,
+   20,
+   0,
+   22,
+   1,
+   "GUIDER"
+  ],
+  [
+   30,
+   11,
+   0,
+   22,
+   2,
+   "SAMPLER"
+  ],
+  [
+   31,
+   21,
+   0,
+   22,
+   3,
+   "SIGMAS"
+  ],
+  [
+   32,
+   18,
+   0,
+   22,
+   4,
+   "LATENT"
+  ],
+  [
+   33,
+   22,
+   0,
+   14,
+   0,
+   "LATENT"
+  ]
+ ],
+ "groups": [
+  {
+   "id": 1,
+   "title": "1 · Escolha e edite (Ripple Clip)",
+   "bounding": [
+    -1720,
+    -60,
+    680,
+    1260
+   ],
+   "color": "#3f789e",
+   "font_size": 24,
+   "flags": {}
+  },
+  {
+   "id": 2,
+   "title": "Modelos (Pika + Ripple LoRA)",
+   "bounding": [
+    -920,
+    -60,
+    540,
+    1100
+   ],
+   "color": "#5a8162",
+   "font_size": 24,
+   "flags": {}
+  },
+  {
+   "id": 3,
+   "title": "2 · SyncTile — Ripple por janelas de contexto",
+   "bounding": [
+    -440,
+    -60,
+    3000,
+    700
+   ],
+   "color": "#3f3f7f",
+   "font_size": 24,
+   "flags": {}
+  },
+  {
+   "id": 4,
+   "title": "3 · Upscale pass (estágio 2): latent upscaler 3D → refino por tiles × janelas",
+   "bounding": [
+    1020,
+    380,
+    1480,
+    460
+   ],
+   "color": "#a1309b",
+   "font_size": 24,
+   "flags": {}
+  }
+ ],
+ "definitions": {
+  "subgraphs": []
+ },
+ "config": {},
+ "extra": {
+  "ds": {
+   "scale": 0.5,
+   "offset": [
+    0,
+    0
+   ]
+  }
+ },
+ "version": 0.4
+}
