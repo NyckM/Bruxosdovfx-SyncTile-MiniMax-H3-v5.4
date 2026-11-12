@@ -1,0 +1,2236 @@
+{
+ "id": "bruxos-v29-regen2k",
+ "revision": 0,
+ "last_node_id": 21,
+ "last_link_id": 23,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "UNETLoader",
+   "pos": [
+    -900,
+    0
+   ],
+   "size": [
+    520,
+    82
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "unet_name",
+     "localized_name": "unet_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "unet_name"
+     }
+    },
+    {
+     "name": "weight_dtype",
+     "localized_name": "weight_dtype",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "weight_dtype"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "MODEL",
+     "localized_name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      1
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "UNETLoader"
+   },
+   "widgets_values": [
+    "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+    "default"
+   ],
+   "title": "H3 FL2VA",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 2,
+   "type": "LoraLoaderModelOnly",
+   "pos": [
+    -900,
+    120
+   ],
+   "size": [
+    520,
+    82
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "model",
+     "localized_name": "model",
+     "type": "MODEL",
+     "link": 1
+    },
+    {
+     "name": "lora_name",
+     "localized_name": "lora_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "lora_name"
+     }
+    },
+    {
+     "name": "strength_model",
+     "localized_name": "strength_model",
+     "type": "FLOAT",
+     "link": null,
+     "widget": {
+      "name": "strength_model"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "MODEL",
+     "localized_name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      2
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "LoraLoaderModelOnly"
+   },
+   "widgets_values": [
+    "minimax\\pika_h3_flex_fl2va_comfy_bf16.safetensors",
+    1
+   ],
+   "title": "Pika H3 Flex LoRA (6 passos)",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 3,
+   "type": "LoraLoaderBypassModelOnly",
+   "pos": [
+    -900,
+    240
+   ],
+   "size": [
+    520,
+    82
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "model",
+     "localized_name": "model",
+     "type": "MODEL",
+     "link": 2
+    },
+    {
+     "name": "lora_name",
+     "localized_name": "lora_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "lora_name"
+     }
+    },
+    {
+     "name": "strength_model",
+     "localized_name": "strength_model",
+     "type": "FLOAT",
+     "link": null,
+     "widget": {
+      "name": "strength_model"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "MODEL",
+     "localized_name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      3
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "LoraLoaderBypassModelOnly"
+   },
+   "widgets_values": [
+    "minimax\\viggle_remake_edit_comfyui.safetensors",
+    1
+   ],
+   "title": "Remake LoRA",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 4,
+   "type": "CLIPLoader",
+   "pos": [
+    -900,
+    380
+   ],
+   "size": [
+    520,
+    110
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "clip_name",
+     "localized_name": "clip_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "clip_name"
+     }
+    },
+    {
+     "name": "type",
+     "localized_name": "type",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "type"
+     }
+    },
+    {
+     "name": "device",
+     "localized_name": "device",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "device"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "CLIP",
+     "localized_name": "CLIP",
+     "type": "CLIP",
+     "links": [
+      8
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "CLIPLoader"
+   },
+   "widgets_values": [
+    "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+    "minimax",
+    "default"
+   ],
+   "title": "Qwen3-VL text encoder",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 5,
+   "type": "VAELoader",
+   "pos": [
+    -900,
+    530
+   ],
+   "size": [
+    520,
+    60
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "vae_name",
+     "localized_name": "vae_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "vae_name"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "VAE",
+     "localized_name": "VAE",
+     "type": "VAE",
+     "links": [
+      9,
+      22
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "VAELoader"
+   },
+   "widgets_values": [
+    "Minimax\\minimax_h3_sol_vae_fp16.safetensors"
+   ],
+   "title": "VAE vídeo",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 6,
+   "type": "RemakeKeyframeUntil",
+   "pos": [
+    -900,
+    640
+   ],
+   "size": [
+    520,
+    60
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "model",
+     "localized_name": "model",
+     "type": "MODEL",
+     "link": 3
+    },
+    {
+     "name": "keyframe_until",
+     "localized_name": "keyframe_until",
+     "type": "FLOAT",
+     "link": null,
+     "widget": {
+      "name": "keyframe_until"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "MODEL",
+     "localized_name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      14
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "RemakeKeyframeUntil"
+   },
+   "widgets_values": [
+    0.9
+   ],
+   "title": "Keyframe until σ 0.9 (últimos 2 de 6 passos sem keyframes)",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 7,
+   "type": "PrimitiveStringMultiline",
+   "pos": [
+    -900,
+    760
+   ],
+   "size": [
+    520,
+    700
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "value",
+     "localized_name": "value",
+     "type": "STRING",
+     "link": null,
+     "widget": {
+      "name": "value"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "STRING",
+     "localized_name": "STRING",
+     "type": "STRING",
+     "links": [
+      10
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "PrimitiveStringMultiline"
+   },
+   "widgets_values": [
+    "subject_definitions:\n<Video 1> is the source video for the target video edit.\n<Picture 1> is a reference image for the color and surface texture of the new mass that replaces the bath water. It is not a frame of the target video.\n<Subject 1> is the woman in <Video 1>: her identity, face, hair, body, poses, movements and expressions exactly as in <Video 1>, frame by frame, with her hair gathered in a high bun at every moment.\n<Subject 2> is the bath water in <Video 1>: the green water filling the bathtub around the woman, up to its surface line inside the tub.\n<Subject 3> is the setting from <Video 1>: the bathroom, the bathtub with its walls and rim, the objects around it and the lighting.\n\nsummary:\n[video editing] The target video is an edited version of <Video 1>. The woman sits in the bathtub and moves exactly as in <Video 1>, but the green bath water is replaced by a dense, heavy, highly viscous dark green mass with the color and textured surface of <Picture 1>, like thick wet clay, dense mud or heavy molasses, closer to a soft paste than to a liquid, with exactly the same static camera, framing, light and timing as <Video 1>.\n\nretention_analysis:\n<Video 1> (source video editing): fully_preserved except the bath water - the static camera, framing, field of view, aspect ratio, the woman's performance and timing, the bathroom, its objects and the lighting are copied frame for frame.\n<Picture 1> (texture reference): partially_preserved - only its deep dark green color and its mottled, grainy surface are used for the new mass; nothing else from <Picture 1> appears in the target video.\n<Subject 1> (appears in [Shot 1]): fully_preserved - her identity, face, hair in a high bun, arms, hands, body, poses, movements and expressions are retained frame by frame, with nothing added.\n<Subject 2> (appears in [Shot 1]): replaced - in every frame the green water is replaced by a dense, heavy, fully opaque dark green mass with the color and surface of <Picture 1>, filling the tub up to the same surface line.\n<Subject 3> (appears in [Shot 1]): fully_preserved - the bathroom, the bathtub, its walls and rim, the objects and the lighting are retained.\n\ndetailed_description:\nThe target video is a clean, sharp static shot in the same look and lighting as <Video 1>. No text and no lettering anywhere. No dialogue or narration.\n[Shot 1] From the first frame to the last, <Subject 1> sits in the bathtub inside <Subject 3> exactly as in <Video 1>, with the same static camera view, framing and composition. Her hair, arms, hands and movements are exactly as in <Video 1> at every moment, with nothing added. Whatever is above the surface in <Video 1> stays above the surface, in the same place and at the same moment. Whatever is under the surface in <Video 1> stays hidden under the surface. Her hands The only change is the bath water. It is replaced by a dense, heavy, highly viscous, fully opaque mass, like thick wet clay, dense mud or heavy molasses. It barely flows, has real weight and body, and holds its shape for a moment before slowly sagging. Its color and surface follow Picture 1: a deep dark green, near-black in the shadows, with a mottled, grainy surface, patches of brighter green and small warm glints, constant from the first frame to the last. It never ripples, sloshes or splashes. Its surface stays almost still, with only slow, heavy deformations where her body moves beneath it. Wherever something comes out of it, it clings for an instant, stretches into short, thick strands, then lets go and sinks back, leaving the skin clean. It stays inside the tub, below a clean, straight line, with the tub walls and rim spotless above it.\n\noverall_soundscape:\nThe soundtrack of <Video 1>, unchanged.\n\nnon_diegetic_music:\nN/A\n"
+   ],
+   "title": "Prompt (6 seções do Remake)",
+   "color": "#322",
+   "bgcolor": "#533"
+  },
+  {
+   "id": 8,
+   "type": "BruxosLoadVideoPro",
+   "pos": [
+    -1500,
+    0
+   ],
+   "size": [
+    480,
+    1094
+   ],
+   "flags": {},
+   "order": 8,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "video",
+     "name": "video",
+     "type": "COMBO",
+     "widget": {
+      "name": "video"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "video_path",
+     "name": "video_path",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "video_path"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "skip_first_frames",
+     "name": "skip_first_frames",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "skip_first_frames"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "frame_load_cap",
+     "name": "frame_load_cap",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "frame_load_cap"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "select_every_nth",
+     "name": "select_every_nth",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "select_every_nth"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "force_rate",
+     "name": "force_rate",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "force_rate"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "custom_width",
+     "name": "custom_width",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "custom_width"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "custom_height",
+     "name": "custom_height",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "custom_height"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "girar",
+     "name": "girar",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "girar"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "flip_horizontal",
+     "name": "flip_horizontal",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "flip_horizontal"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "flip_vertical",
+     "name": "flip_vertical",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "flip_vertical"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "fit_mode",
+     "name": "fit_mode",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "fit_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "aspect",
+     "name": "aspect",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "aspect"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "target_width",
+     "name": "target_width",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "target_width"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "target_height",
+     "name": "target_height",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "target_height"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "crop_x",
+     "name": "crop_x",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "crop_x"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "crop_y",
+     "name": "crop_y",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "crop_y"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "crop_w",
+     "name": "crop_w",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "crop_w"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "crop_h",
+     "name": "crop_h",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "crop_h"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "reverse",
+     "name": "reverse",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "reverse"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "importar_mais_bits",
+     "name": "importar_mais_bits",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "importar_mais_bits"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "criar_cache_ssd",
+     "name": "criar_cache_ssd",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "criar_cache_ssd"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "pad_grade",
+     "name": "pad_grade",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "pad_grade"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "links": [
+      11
+     ]
+    },
+    {
+     "localized_name": "video",
+     "name": "video",
+     "type": "VIDEO",
+     "links": []
+    },
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "type": "AUDIO",
+     "links": [
+      23
+     ]
+    },
+    {
+     "localized_name": "fps",
+     "name": "fps",
+     "type": "FLOAT",
+     "links": []
+    },
+    {
+     "localized_name": "frame_count",
+     "name": "frame_count",
+     "type": "INT",
+     "links": [
+      6
+     ]
+    },
+    {
+     "localized_name": "width",
+     "name": "width",
+     "type": "INT",
+     "links": [
+      4
+     ]
+    },
+    {
+     "localized_name": "height",
+     "name": "height",
+     "type": "INT",
+     "links": [
+      5
+     ]
+    },
+    {
+     "localized_name": "video_info",
+     "name": "video_info",
+     "type": "STRING",
+     "links": []
+    },
+    {
+     "localized_name": "Cache",
+     "name": "Cache",
+     "type": "BRUXOS_FRAME_CACHE",
+     "links": []
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "BruxosLoadVideoPro"
+   },
+   "widgets_values": [
+    "34_cz_1.mp4",
+    "",
+    0,
+    0,
+    1,
+    0,
+    1280,
+    736,
+    "off",
+    false,
+    false,
+    "stretch",
+    "livre",
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    false,
+    false,
+    false,
+    "off",
+    ""
+   ],
+   "widgets_values_named": {
+    "video": "34_cz_1.mp4",
+    "video_path": "",
+    "skip_first_frames": 0,
+    "frame_load_cap": 0,
+    "select_every_nth": 1,
+    "force_rate": 0,
+    "custom_width": 1280,
+    "custom_height": 736,
+    "girar": "off",
+    "flip_horizontal": false,
+    "flip_vertical": false,
+    "fit_mode": "stretch",
+    "aspect": "livre",
+    "target_width": 0,
+    "target_height": 0,
+    "crop_x": 0,
+    "crop_y": 0,
+    "crop_w": 1,
+    "crop_h": 1,
+    "reverse": false,
+    "importar_mais_bits": false,
+    "criar_cache_ssd": false,
+    "pad_grade": "off",
+    "bruxos_load_pro_player": ""
+   },
+   "color": "#3e3e4a",
+   "bgcolor": "#141419",
+   "title": "Vídeo fonte (<Video 1>) — vídeo LONGO ok"
+  },
+  {
+   "id": 9,
+   "type": "BruxosLoadImage",
+   "pos": [
+    -1500,
+    1150
+   ],
+   "size": [
+    479.94876433731076,
+    760.398046875
+   ],
+   "flags": {},
+   "order": 9,
+   "mode": 0,
+   "showAdvanced": true,
+   "inputs": [
+    {
+     "localized_name": "image",
+     "name": "image",
+     "type": "COMBO",
+     "widget": {
+      "name": "image"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "fit_mode",
+     "name": "fit_mode",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "fit_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "target_width",
+     "name": "target_width",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "target_width"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "target_height",
+     "name": "target_height",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "target_height"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "aspect",
+     "name": "aspect",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "aspect"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "crop_x",
+     "name": "crop_x",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "crop_x"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "crop_y",
+     "name": "crop_y",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "crop_y"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "crop_w",
+     "name": "crop_w",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "crop_w"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "crop_h",
+     "name": "crop_h",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "crop_h"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "image_path",
+     "name": "image_path",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "image_path"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "girar",
+     "name": "girar",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "girar"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "flip_horizontal",
+     "name": "flip_horizontal",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "flip_horizontal"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "flip_vertical",
+     "name": "flip_vertical",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "flip_vertical"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "image",
+     "name": "image",
+     "type": "IMAGE",
+     "links": [
+      13
+     ]
+    },
+    {
+     "localized_name": "mask",
+     "name": "mask",
+     "type": "MASK",
+     "links": []
+    },
+    {
+     "localized_name": "width",
+     "name": "width",
+     "type": "INT",
+     "links": []
+    },
+    {
+     "localized_name": "height",
+     "name": "height",
+     "type": "INT",
+     "links": []
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "BruxosLoadImage"
+   },
+   "widgets_values": [
+    "Qwen_image_2.1_00030A.png",
+    "stretch",
+    1280,
+    736,
+    "livre",
+    0,
+    0,
+    1,
+    1,
+    "",
+    "off",
+    false,
+    false
+   ],
+   "widgets_values_named": {
+    "image": "Qwen_image_2.1_00030A.png",
+    "fit_mode": "stretch",
+    "target_width": 1280,
+    "target_height": 736,
+    "aspect": "livre",
+    "crop_x": 0,
+    "crop_y": 0,
+    "crop_w": 1,
+    "crop_h": 1,
+    "image_path": "",
+    "girar": "off",
+    "flip_horizontal": false,
+    "flip_vertical": false
+   },
+   "color": "#1c223c",
+   "bgcolor": "#141419",
+   "title": "Imagem editada (<Picture 1>) — pinada no frame de edit_frames"
+  },
+  {
+   "id": 10,
+   "type": "ComfyMathExpression",
+   "pos": [
+    -420,
+    700
+   ],
+   "size": [
+    360,
+    120
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "values.a",
+     "localized_name": "values.a",
+     "type": "FLOAT,INT,BOOLEAN",
+     "link": 6
+    },
+    {
+     "name": "values.b",
+     "localized_name": "values.b",
+     "type": "FLOAT,INT,BOOLEAN",
+     "link": null,
+     "shape": 7
+    },
+    {
+     "name": "expression",
+     "localized_name": "expression",
+     "type": "STRING",
+     "link": null,
+     "widget": {
+      "name": "expression"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "FLOAT",
+     "localized_name": "FLOAT",
+     "type": "FLOAT",
+     "links": []
+    },
+    {
+     "name": "INT",
+     "localized_name": "INT",
+     "type": "INT",
+     "links": [
+      7
+     ]
+    },
+    {
+     "name": "BOOL",
+     "localized_name": "BOOL",
+     "type": "BOOLEAN",
+     "links": []
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "ComfyMathExpression"
+   },
+   "widgets_values": [
+    "max(5, floor((a - 5) / 17) * 17 + 5)"
+   ],
+   "title": "frames do vídeo → grade 17n+5",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 11,
+   "type": "EmptyMiniMaxH3LatentAV",
+   "pos": [
+    -420,
+    540
+   ],
+   "size": [
+    320,
+    130
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "width",
+     "localized_name": "width",
+     "type": "INT",
+     "link": 4,
+     "widget": {
+      "name": "width"
+     }
+    },
+    {
+     "name": "height",
+     "localized_name": "height",
+     "type": "INT",
+     "link": 5,
+     "widget": {
+      "name": "height"
+     }
+    },
+    {
+     "name": "length",
+     "localized_name": "length",
+     "type": "INT",
+     "link": 7,
+     "widget": {
+      "name": "length"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "LATENT",
+     "localized_name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      12
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "EmptyMiniMaxH3LatentAV"
+   },
+   "widgets_values": [
+    1280,
+    736,
+    226
+   ],
+   "title": "Latent vazio (tamanho/duração do vídeo fonte)",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 12,
+   "type": "SyncTileEditConditioningH3",
+   "pos": [
+    -420,
+    0
+   ],
+   "size": [
+    440,
+    330
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "clip",
+     "localized_name": "clip",
+     "type": "CLIP",
+     "link": 8
+    },
+    {
+     "name": "vae",
+     "localized_name": "vae",
+     "type": "VAE",
+     "link": 9
+    },
+    {
+     "name": "prompt",
+     "localized_name": "prompt",
+     "type": "STRING",
+     "link": 10
+    },
+    {
+     "name": "mode",
+     "localized_name": "mode",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "mode"
+     }
+    },
+    {
+     "name": "tile_width",
+     "localized_name": "tile_width",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "tile_width"
+     }
+    },
+    {
+     "name": "tile_height",
+     "localized_name": "tile_height",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "tile_height"
+     }
+    },
+    {
+     "name": "min_overlap",
+     "localized_name": "min_overlap",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "min_overlap"
+     }
+    },
+    {
+     "name": "source",
+     "localized_name": "source",
+     "type": "IMAGE",
+     "link": 11
+    },
+    {
+     "name": "latent",
+     "localized_name": "latent",
+     "type": "LATENT",
+     "link": 12
+    },
+    {
+     "name": "ripple",
+     "localized_name": "ripple",
+     "type": "WN_RIPPLE",
+     "link": null
+    },
+    {
+     "name": "edit_images",
+     "localized_name": "edit_images",
+     "type": "IMAGE",
+     "link": 13
+    },
+    {
+     "name": "edit_frames",
+     "localized_name": "edit_frames",
+     "type": "STRING",
+     "link": null,
+     "widget": {
+      "name": "edit_frames"
+     }
+    },
+    {
+     "name": "window_frames",
+     "localized_name": "window_frames",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "window_frames"
+     }
+    },
+    {
+     "name": "window_overlap_frames",
+     "localized_name": "window_overlap_frames",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "window_overlap_frames"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "tile_conditioning",
+     "localized_name": "tile_conditioning",
+     "type": "SYNCTILE_CONDS",
+     "links": [
+      15
+     ]
+    },
+    {
+     "name": "latent",
+     "localized_name": "latent",
+     "type": "LATENT",
+     "links": [
+      20
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "SyncTileEditConditioningH3"
+   },
+   "widgets_values": [
+    "remake",
+    0,
+    0,
+    16,
+    "0",
+    294,
+    22
+   ],
+   "title": "SyncTile Edit Conditioning — REMAKE (por janela × tile)",
+   "color": "#2a2a4a",
+   "bgcolor": "#1a1a33"
+  },
+  {
+   "id": 13,
+   "type": "SyncTileGuiderH3",
+   "pos": [
+    140,
+    0
+   ],
+   "size": [
+    380,
+    594
+   ],
+   "flags": {},
+   "order": 4,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 14
+    },
+    {
+     "localized_name": "positive",
+     "name": "positive",
+     "shape": 7,
+     "type": "CONDITIONING",
+     "link": null
+    },
+    {
+     "localized_name": "negative",
+     "name": "negative",
+     "shape": 7,
+     "type": "CONDITIONING",
+     "link": null
+    },
+    {
+     "localized_name": "tile_conditioning",
+     "name": "tile_conditioning",
+     "shape": 7,
+     "type": "SYNCTILE_CONDS",
+     "link": 15
+    },
+    {
+     "localized_name": "tile_conditioning_detail",
+     "name": "tile_conditioning_detail",
+     "shape": 7,
+     "type": "SYNCTILE_CONDS",
+     "link": null
+    },
+    {
+     "localized_name": "tile_width",
+     "name": "tile_width",
+     "type": "INT",
+     "widget": {
+      "name": "tile_width"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tile_height",
+     "name": "tile_height",
+     "type": "INT",
+     "widget": {
+      "name": "tile_height"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "min_overlap",
+     "name": "min_overlap",
+     "type": "INT",
+     "widget": {
+      "name": "min_overlap"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "cfg",
+     "name": "cfg",
+     "type": "FLOAT",
+     "widget": {
+      "name": "cfg"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "sync_mode",
+     "name": "sync_mode",
+     "type": "COMBO",
+     "widget": {
+      "name": "sync_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "use_refine_seed",
+     "name": "use_refine_seed",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "use_refine_seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "refine_seed",
+     "name": "refine_seed",
+     "type": "INT",
+     "widget": {
+      "name": "refine_seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "detail_below_sigma",
+     "name": "detail_below_sigma",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "detail_below_sigma"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "window_frames",
+     "name": "window_frames",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "window_frames"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "window_overlap_frames",
+     "name": "window_overlap_frames",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "window_overlap_frames"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "temporal_mode",
+     "name": "temporal_mode",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "temporal_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "carry_frames",
+     "name": "carry_frames",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "carry_frames"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "temporal_reference",
+     "name": "temporal_reference",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "temporal_reference"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_strength",
+     "name": "tara_strength",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "tara_strength"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_window_seconds",
+     "name": "tara_window_seconds",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "tara_window_seconds"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_falloff_seconds",
+     "name": "tara_falloff_seconds",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "tara_falloff_seconds"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_max_penalty",
+     "name": "tara_max_penalty",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "tara_max_penalty"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tara_motion_video",
+     "name": "tara_motion_video",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "tara_motion_video"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "freenoise",
+     "name": "freenoise",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "freenoise"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "label": "GUIDER",
+     "localized_name": "GUIDER",
+     "name": "GUIDER",
+     "type": "GUIDER",
+     "links": [
+      17
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "SyncTileGuiderH3"
+   },
+   "widgets_values": [
+    0,
+    0,
+    16,
+    1,
+    "per model call",
+    false,
+    0,
+    "fixed",
+    1,
+    0,
+    39,
+    "long take (locked 17-frame hand-off)",
+    22,
+    false,
+    0,
+    0.2,
+    0.25,
+    0,
+    1,
+    false
+   ],
+   "widgets_values_named": {
+    "tile_width": 1440,
+    "tile_height": 896,
+    "min_overlap": 16,
+    "cfg": 1,
+    "sync_mode": "per model call",
+    "use_refine_seed": false,
+    "refine_seed": 0,
+    "control_after_generate": "fixed",
+    "detail_below_sigma": 1,
+    "window_frames": 0,
+    "window_overlap_frames": 39,
+    "temporal_mode": "blend windows (joint)",
+    "carry_frames": 1,
+    "temporal_reference": false,
+    "tara_strength": 0,
+    "tara_window_seconds": 0.2,
+    "tara_falloff_seconds": 0.25,
+    "tara_max_penalty": 0,
+    "tara_motion_video": 1,
+    "freenoise": true
+   },
+   "color": "#2a4a2a",
+   "bgcolor": "#1a2a1a",
+   "title": "SyncTile Guider — tiles AUTO × janelas de contexto (TARA off)"
+  },
+  {
+   "id": 14,
+   "type": "RandomNoise",
+   "pos": [
+    600,
+    0
+   ],
+   "size": [
+    300,
+    82
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "noise_seed",
+     "localized_name": "noise_seed",
+     "type": "INT",
+     "link": null,
+     "widget": {
+      "name": "noise_seed"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "NOISE",
+     "localized_name": "NOISE",
+     "type": "NOISE",
+     "links": [
+      16
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "RandomNoise"
+   },
+   "widgets_values": [
+    783246447394300,
+    "fixed"
+   ],
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 15,
+   "type": "KSamplerSelect",
+   "pos": [
+    600,
+    120
+   ],
+   "size": [
+    300,
+    60
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "sampler_name",
+     "localized_name": "sampler_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "sampler_name"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "SAMPLER",
+     "localized_name": "SAMPLER",
+     "type": "SAMPLER",
+     "links": [
+      18
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "KSamplerSelect"
+   },
+   "widgets_values": [
+    "euler"
+   ],
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 16,
+   "type": "ManualSigmas",
+   "pos": [
+    600,
+    220
+   ],
+   "size": [
+    380,
+    90
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "sigmas",
+     "localized_name": "sigmas",
+     "type": "STRING",
+     "link": null,
+     "widget": {
+      "name": "sigmas"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "SIGMAS",
+     "localized_name": "SIGMAS",
+     "type": "SIGMAS",
+     "links": [
+      19
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "ManualSigmas"
+   },
+   "widgets_values": [
+    "1.0, 0.983607, 0.96, 0.923077, 0.857143, 0.705882, 0.0"
+   ],
+   "title": "Sigmas (6 passos)",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 17,
+   "type": "SamplerCustomAdvanced",
+   "pos": [
+    1040,
+    0
+   ],
+   "size": [
+    300,
+    120
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "noise",
+     "localized_name": "noise",
+     "type": "NOISE",
+     "link": 16
+    },
+    {
+     "name": "guider",
+     "localized_name": "guider",
+     "type": "GUIDER",
+     "link": 17
+    },
+    {
+     "name": "sampler",
+     "localized_name": "sampler",
+     "type": "SAMPLER",
+     "link": 18
+    },
+    {
+     "name": "sigmas",
+     "localized_name": "sigmas",
+     "type": "SIGMAS",
+     "link": 19
+    },
+    {
+     "name": "latent_image",
+     "localized_name": "latent_image",
+     "type": "LATENT",
+     "link": 20
+    }
+   ],
+   "outputs": [
+    {
+     "name": "output",
+     "localized_name": "output",
+     "type": "LATENT",
+     "links": []
+    },
+    {
+     "name": "denoised_output",
+     "localized_name": "denoised_output",
+     "type": "LATENT",
+     "links": [
+      21
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "SamplerCustomAdvanced"
+   },
+   "widgets_values": [],
+   "title": "Gerar (janelas de contexto)",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 18,
+   "type": "SyncTileStreamDecodeVideoH3",
+   "pos": [
+    1040,
+    180
+   ],
+   "size": [
+    555.6783203125,
+    218
+   ],
+   "flags": {},
+   "order": 6,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "samples",
+     "name": "samples",
+     "type": "LATENT",
+     "link": 21
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "type": "VAE",
+     "link": 22
+    },
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": 23
+    },
+    {
+     "localized_name": "filename_prefix",
+     "name": "filename_prefix",
+     "type": "STRING",
+     "widget": {
+      "name": "filename_prefix"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "fps",
+     "name": "fps",
+     "type": "FLOAT",
+     "widget": {
+      "name": "fps"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "codec",
+     "name": "codec",
+     "type": "COMBO",
+     "widget": {
+      "name": "codec"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "crf",
+     "name": "crf",
+     "type": "INT",
+     "widget": {
+      "name": "crf"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "image_output",
+     "name": "image_output",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "image_output"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "write_video",
+     "name": "write_video",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "write_video"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "filepath",
+     "name": "filepath",
+     "type": "STRING",
+     "links": []
+    },
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "links": []
+    },
+    {
+     "localized_name": "video",
+     "name": "video",
+     "type": "VIDEO",
+     "links": []
+    }
+   ],
+   "title": "bruxosdovfx • SyncTile Stream Decode → arquivo + IMAGE p/ Save Video Pro",
+   "properties": {
+    "Node name for S&R": "SyncTileStreamDecodeVideoH3"
+   },
+   "widgets_values": [
+    "SyncTile/Remake_longtake",
+    24,
+    "h265 10-bit (.mp4)",
+    14,
+    "off",
+    true
+   ],
+   "widgets_values_named": {
+    "filename_prefix": "SyncTile/Pika_H3_Flex_t2v",
+    "fps": 24,
+    "codec": "h265 10-bit (.mp4)",
+    "crf": 3,
+    "image_output": "full resolution",
+    "write_video": true
+   },
+   "color": "#2a4a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 19,
+   "type": "KSamplerSelect",
+   "pos": [
+    1100,
+    700
+   ],
+   "size": [
+    370,
+    70
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "sampler_name",
+     "localized_name": "sampler_name",
+     "type": "COMBO",
+     "link": null,
+     "widget": {
+      "name": "sampler_name"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "SAMPLER",
+     "localized_name": "SAMPLER",
+     "type": "SAMPLER",
+     "links": []
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "KSamplerSelect"
+   },
+   "widgets_values": [
+    "lcm"
+   ],
+   "title": "ALTERNATIVA lcm (receita Pika) — troque no Gerar",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 20,
+   "type": "ManualSigmas",
+   "pos": [
+    1100,
+    800
+   ],
+   "size": [
+    494,
+    100
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "sigmas",
+     "localized_name": "sigmas",
+     "type": "STRING",
+     "link": null,
+     "widget": {
+      "name": "sigmas"
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "name": "SIGMAS",
+     "localized_name": "SIGMAS",
+     "type": "SIGMAS",
+     "links": []
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "ManualSigmas"
+   },
+   "widgets_values": [
+    "1.0, 0.972973, 0.923077, 0.8, 0.571429, 0.333333, 0.0"
+   ],
+   "title": "ALTERNATIVA sigmas do Pika (6 passos)",
+   "color": "#2a3a2a",
+   "bgcolor": "#1a2a1a"
+  },
+  {
+   "id": 21,
+   "type": "Note",
+   "pos": [
+    -1500,
+    1700
+   ],
+   "size": [
+    900,
+    700
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [],
+   "properties": {
+    "Node name for S&R": "Note"
+   },
+   "widgets_values": [
+    "Viggle Remake (edição de vídeo) × SyncTile · bruxosdovfx\nPT\n• O que mudou: a condição do Remake (<Video 1> = vídeo fonte + rótulos de tempo 2 fps, <Picture 1> = imagem editada, pin no frame 0) agora é refeita POR JANELA DE CONTEXTO e POR TILE pelo nó \"SyncTile Edit Conditioning (Remake)\". O vídeo pode ter centenas de frames: cada janela de 124 frames (sobreposição 39) recebe só o trecho do vídeo fonte e só os pins que caem nela.\n• Tiles: tile_width/height = 0 → automático pelo tamanho do vídeo (1 tile em 1280×736, 2×2 em 4K).\n• Janelas: modo 'guide from previous window (latent clip)', 22 frames de contexto — as janelas sem pin seguem a janela anterior editada. Se aparecer emenda, aumente o overlap (56) ou use 'blend windows (joint)' + FreeNoise.\n• Para editar mais frames: ligue um lote de imagens em edit_images e liste os frames em edit_frames (ex.: '0, 190, 400'; máx. 4 imagens no Remake).\n• Mantido: Pika LoRA 1.0 → Remake LoRA (bypass) → Keyframe Until 0.9; sigmas e sampler do Remake (euler, 6 passos). A receita Pika (lcm + sigmas) está ao lado, desconectada, para testar.\n• Áudio: o Remake segura o áudio fonte limpo durante a geração; aqui o áudio de saída é o do vídeo fonte (mux direto no Stream Decode). O modelo gera sem a trilha limpa como condição — se notar diferença de ritmo/boca, avise.\n• Precisa: bruxosdovfx-SyncTile ≥ 6.5, ComfyUI-Viggle-Remake.\nEN: Remake conditioning rebuilt per context window and per tile (SyncTile Edit Conditioning), auto tiles, source audio muxed into the output; Pika LoRA + Remake LoRA + Keyframe Until kept.\n中文：Remake 条件按上下文窗口和图块重建（SyncTile Edit Conditioning），自动图块，输出使用源音频；保留 Pika LoRA、Remake LoRA 与 Keyframe Until。"
+   ],
+   "title": "LEIA-ME — Viggle Remake × SyncTile",
+   "color": "#432",
+   "bgcolor": "#653"
+  }
+ ],
+ "links": [
+  [
+   1,
+   1,
+   0,
+   2,
+   0,
+   "MODEL"
+  ],
+  [
+   2,
+   2,
+   0,
+   3,
+   0,
+   "MODEL"
+  ],
+  [
+   3,
+   3,
+   0,
+   6,
+   0,
+   "MODEL"
+  ],
+  [
+   4,
+   8,
+   5,
+   11,
+   0,
+   "INT"
+  ],
+  [
+   5,
+   8,
+   6,
+   11,
+   1,
+   "INT"
+  ],
+  [
+   6,
+   8,
+   4,
+   10,
+   0,
+   "INT"
+  ],
+  [
+   7,
+   10,
+   1,
+   11,
+   2,
+   "INT"
+  ],
+  [
+   8,
+   4,
+   0,
+   12,
+   0,
+   "CLIP"
+  ],
+  [
+   9,
+   5,
+   0,
+   12,
+   1,
+   "VAE"
+  ],
+  [
+   10,
+   7,
+   0,
+   12,
+   2,
+   "STRING"
+  ],
+  [
+   11,
+   8,
+   0,
+   12,
+   7,
+   "IMAGE"
+  ],
+  [
+   12,
+   11,
+   0,
+   12,
+   8,
+   "LATENT"
+  ],
+  [
+   13,
+   9,
+   0,
+   12,
+   10,
+   "IMAGE"
+  ],
+  [
+   14,
+   6,
+   0,
+   13,
+   0,
+   "MODEL"
+  ],
+  [
+   15,
+   12,
+   0,
+   13,
+   3,
+   "SYNCTILE_CONDS"
+  ],
+  [
+   16,
+   14,
+   0,
+   17,
+   0,
+   "NOISE"
+  ],
+  [
+   17,
+   13,
+   0,
+   17,
+   1,
+   "GUIDER"
+  ],
+  [
+   18,
+   15,
+   0,
+   17,
+   2,
+   "SAMPLER"
+  ],
+  [
+   19,
+   16,
+   0,
+   17,
+   3,
+   "SIGMAS"
+  ],
+  [
+   20,
+   12,
+   1,
+   17,
+   4,
+   "LATENT"
+  ],
+  [
+   21,
+   17,
+   1,
+   18,
+   0,
+   "LATENT"
+  ],
+  [
+   22,
+   5,
+   0,
+   18,
+   1,
+   "VAE"
+  ],
+  [
+   23,
+   8,
+   2,
+   18,
+   2,
+   "AUDIO"
+  ]
+ ],
+ "groups": [
+  {
+   "id": 1,
+   "title": "Entradas + modelos (Remake)",
+   "bounding": [
+    -1520,
+    -60,
+    1100,
+    1700
+   ],
+   "color": "#3f789e",
+   "font_size": 24,
+   "flags": {}
+  },
+  {
+   "id": 2,
+   "title": "SyncTile — Remake por janelas de contexto",
+   "bounding": [
+    -440,
+    -60,
+    2080,
+    1000
+   ],
+   "color": "#3f3f7f",
+   "font_size": 24,
+   "flags": {}
+  }
+ ],
+ "definitions": {
+  "subgraphs": []
+ },
+ "config": {},
+ "extra": {
+  "ds": {
+   "scale": 0.5,
+   "offset": [
+    0,
+    0
+   ]
+  }
+ },
+ "version": 0.4
+}

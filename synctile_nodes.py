@@ -38,6 +38,7 @@ TEMPORAL_BLEND = "blend windows (joint)"
 TEMPORAL_CARRY = "carry previous frames (sequential)"
 TEMPORAL_GUIDE = "guide from previous window (1 frame)"
 TEMPORAL_GUIDE_CLIP = "guide from previous window (latent clip)"
+TEMPORAL_LONGTAKE = "long take (locked 17-frame hand-off)"   # sequential renders; format after hojenaia/viggle-remake-comfyui-long-take (Apache-2.0)
 
 try:
     from . import tara as _tara
@@ -126,12 +127,17 @@ AUTO_TILE_CELLS = 5160      # ~1.3 MP per tile (1472x896 = 5152 cells): what fit
 
 def auto_tile(lat_h, lat_w, min_overlap, budget=AUTO_TILE_CELLS):
     """Fewest tiles (nx*ny) whose area fits the budget; tiles share the canvas evenly, so any aspect
-    ratio (16:9, 1:1, 9:16...) gets matching tile shapes. Returns (tile_w, tile_h) in latent cells."""
+    ratio (16:9, 1:1, 9:16...) gets matching tile shapes. Tile sides are EVEN latent cells (multiples of
+    32 px): the H3 transformer patchifies 2x2, an odd tile breaks it. Returns (tile_w, tile_h) in cells."""
+    def side(n, size):
+        if n == 1:
+            return size
+        t = math.ceil((size + (n - 1) * min_overlap) / n)
+        return min(size, t + t % 2)
     best, ok = None, None
     for nx in range(1, 9):
         for ny in range(1, 9):
-            tw = lat_w if nx == 1 else min(lat_w, math.ceil((lat_w + (nx - 1) * min_overlap) / nx))
-            th = lat_h if ny == 1 else min(lat_h, math.ceil((lat_h + (ny - 1) * min_overlap) / ny))
+            tw, th = side(nx, lat_w), side(ny, lat_h)
             if tw * th > budget:
                 continue
             key = (nx * ny, abs(math.log((tw / th) / (lat_w / lat_h))))
@@ -141,7 +147,8 @@ def auto_tile(lat_h, lat_w, min_overlap, budget=AUTO_TILE_CELLS):
                 ok = (key, tw, th)
     best = ok or best
     if best is None:
-        return max(1, int(budget ** 0.5)), max(1, int(budget ** 0.5))
+        n = max(2, int(budget ** 0.5) // 2 * 2)
+        return n, n
     return best[1], best[2]
 
 
@@ -372,7 +379,7 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         extra_model_options.setdefault("transformer_options", {})["sample_sigmas"] = sigmas
         extra_args = {"model_options": extra_model_options, "seed": seed}
         carry = getattr(self, "temporal_mode", TEMPORAL_BLEND) in (TEMPORAL_CARRY, TEMPORAL_GUIDE,
-                                                                   TEMPORAL_GUIDE_CLIP) and n_windows > 1
+                                                                   TEMPORAL_GUIDE_CLIP, TEMPORAL_LONGTAKE) and n_windows > 1
         if carry:
             if self.mode == MODE_ORIGINAL:
                 log.warning("SyncTile: 'carry previous frames' uses the connected sampler; sync_mode original is ignored.")
@@ -400,7 +407,9 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         full_shapes, all_tiles = self.full_shapes, self.tiles
         old_ls = getattr(self.inner_model, "latent_shapes", None)
         windows = sorted({(r["t"], r["a"]) for r in all_tiles}, key=lambda w: w[0][0])
-        carry_tok = 1 + math.ceil((max(1, int(getattr(self, "carry_frames", 21))) - 1) / 4)
+        carry_frames = 17 if getattr(self, "temporal_mode", None) == TEMPORAL_LONGTAKE else int(getattr(self, "carry_frames", 21))
+        # long take: exactly 17 frames = 5 latent tokens of the finished previous take are locked as clean latents
+        carry_tok = 1 + math.ceil((max(1, carry_frames) - 1) / 4)
         guide_mode = getattr(self, "temporal_mode", TEMPORAL_BLEND) in (TEMPORAL_GUIDE, TEMPORAL_GUIDE_CLIP)
         clip_mode = getattr(self, "temporal_mode", TEMPORAL_BLEND) == TEMPORAL_GUIDE_CLIP
         canvas_x = [p.clone() for p in _unpack(latent_image, full_shapes)]     # sampler state
@@ -747,7 +756,7 @@ class SyncTileGuider:
                 "window_frames": ("INT", {"default": 0, "min": 0, "max": 3600, "step": 1, "tooltip":
                                   WINDOW_TIP + " Only used with 'positive'; with tile_conditioning the windows come from that node."}),
                 "window_overlap_frames": ("INT", {"default": 39, "min": 5, "max": 1000, "step": 17, "tooltip": OVERLAP_TIP}),
-                "temporal_mode": ([TEMPORAL_BLEND, TEMPORAL_CARRY, TEMPORAL_GUIDE, TEMPORAL_GUIDE_CLIP], {"default": TEMPORAL_BLEND}),
+                "temporal_mode": ([TEMPORAL_BLEND, TEMPORAL_CARRY, TEMPORAL_GUIDE, TEMPORAL_GUIDE_CLIP, TEMPORAL_LONGTAKE], {"default": TEMPORAL_BLEND}),
                 "carry_frames": ("INT", {"default": 21, "min": 1, "max": 200, "step": 4}),
                 "temporal_reference": ("BOOLEAN", {"default": False}),
                 "tara_strength": ("FLOAT", {"default": 2.0, "min": 0.0, "max": 20.0, "step": 0.1}),
