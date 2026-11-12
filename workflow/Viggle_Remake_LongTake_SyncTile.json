@@ -1527,6 +1527,8 @@
     0,
     1,
     false,
+    false,
+    4,
     true
    ],
    "widgets_values_named": {

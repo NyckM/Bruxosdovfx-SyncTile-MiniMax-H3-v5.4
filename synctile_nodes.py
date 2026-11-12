@@ -419,6 +419,8 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         steps = len(sigmas) - 1
         prev = None
         keystone = None
+        capstone = None
+        cap_on = bool(getattr(self, "capstone", False))
 
         def window_slice(parts, t, a):
             out = [parts[0][:, :, t[0]:t[0] + t[1]]]
@@ -533,10 +535,15 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                 # locked tokens are handled RePaint-style in predict_noise: re-noised to the current sigma with the
                 # same noise (consistent with the timestep the model sees) and their prediction pinned to x0
                 self._carry = None if mask is None else {"mask": mask, "lat": wlat, "noise": wnoise}
+                if cap_on and capstone is not None and k > 0:
+                    self._capstone = {"lat": capstone, "start": int(getattr(self, "capstone_start_step", 4)), "warned": {}}
+                    log.info("SyncTile capstone: first-window anchor token appended from sampler step %d in window %d",
+                             self._capstone["start"] + 1, k + 1)
                 try:
                     res_x = executor.execute(self, sigmas, wargs, cb, wnoise, wlat, None, disable_pbar)
                 finally:
                     self._carry = None
+                    self._capstone = None
                 res_0 = last.get("x0", res_x)
                 if float(sigmas[-1]) <= 0:
                     res_0 = res_x                                    # fully denoised: state == x0
@@ -544,6 +551,10 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                 write(canvas_0, _unpack(res_0, wshapes), t, a, fade, afade)
                 if k == 0 and getattr(self, "identity_anchor", False):
                     keystone = canvas_0[0][:, :, :1].clone()
+                if k == 0 and cap_on:
+                    ci = 5 * ((tn - 1) // 5)
+                    capstone = canvas_0[0][:, :, ci:ci + 1].clone()
+                    log.info("SyncTile capstone: captured token %d of the first window", ci)
                 prev = (t, a)
                 comfy.model_management.throw_exception_if_processing_interrupted()
         finally:
@@ -704,8 +715,71 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
             to = dict(model_options.get("transformer_options", {}))
             to["optimized_attention_override"] = _tara.make_override(ctx, to.get("optimized_attention_override"))
             model_options["transformer_options"] = to
+        cap = getattr(self, "_capstone", None)
+        if cap is not None:
+            model_options = self._with_capstone(model_options, r["box"], cap)
         return comfy.samplers.sampling_function(self.inner_model, x, timestep, c.get("negative"), c.get("positive"),
                                                 self.cfg, model_options=model_options, seed=seed)
+
+    def _with_capstone(self, model_options, box, cap):
+        """Capstone (after hojenaia/viggle-remake-comfyui-long-take, Apache-2.0): from sampler step `start` on, one
+        extra clean latent token from the first window is appended at the end of this region's video latent, with
+        denoise mask 0, for the model call only; its output is cropped off again. It anchors the look of the shot."""
+        bx, by, bw, bh = box
+        key = cap["lat"][:, :, :, by:by + bh, bx:bx + bw]
+        previous = model_options.get("model_function_wrapper")
+        warned = cap["warned"]
+
+        def wrapper(apply_model, args):
+            def invoke(a):
+                if previous is not None:
+                    return previous(apply_model, a)
+                return apply_model(a["input"], a["timestep"], **a["c"])
+
+            cond = args["c"]
+            shapes = cond.get("latent_shapes")
+            if not shapes:
+                return invoke(args)
+            sigs = (cond.get("transformer_options") or {}).get("sample_sigmas")
+            if sigs is None:
+                sigs = (model_options.get("transformer_options") or {}).get("sample_sigmas")
+            step = 0
+            if sigs is not None:
+                step = int(torch.argmin((sigs.float().cpu() - float(args["timestep"].flatten()[0])).abs()))
+            if step < cap["start"]:
+                return invoke(args)
+            parts = comfy.utils.unpack_latents(args["input"], shapes)
+            vi = max(range(len(parts)), key=lambda i: parts[i].ndim)
+            video = parts[vi]
+            if video.ndim != 5 or key.shape[1] != video.shape[1] or key.shape[3:] != video.shape[3:]:
+                if not warned.get("shape"):
+                    log.warning("SyncTile capstone: shape %s does not fit the region latent %s; skipped",
+                                tuple(key.shape), tuple(video.shape))
+                    warned["shape"] = True
+                return invoke(args)
+            mask = cond.get("denoise_mask")
+            if mask is None:
+                mask = torch.ones((video.shape[0], 1) + tuple(video.shape[2:]), device=video.device, dtype=video.dtype)
+            if mask.ndim != 5 or mask.shape[0] != video.shape[0] or mask.shape[2:] != video.shape[2:]:
+                if not warned.get("mask"):
+                    log.warning("SyncTile capstone: denoise mask %s does not match the video latent; skipped",
+                                tuple(mask.shape))
+                    warned["mask"] = True
+                return invoke(args)
+            n = video.shape[2]
+            parts[vi] = torch.cat((video, key.to(device=video.device, dtype=video.dtype).expand(video.shape[0], -1, -1, -1, -1)), dim=2)
+            packed, new_shapes = comfy.utils.pack_latents(parts)
+            c2 = dict(cond)
+            c2["latent_shapes"] = new_shapes
+            c2["denoise_mask"] = torch.cat((mask, torch.zeros_like(mask[:, :, :1])), dim=2)
+            out = invoke(dict(args, input=packed, c=c2))
+            op = comfy.utils.unpack_latents(out, new_shapes)
+            op[vi] = op[vi][:, :, :n]
+            return comfy.utils.pack_latents(op)[0]
+
+        mo = dict(model_options)
+        mo["model_function_wrapper"] = wrapper
+        return mo
 
     def predict_noise(self, x, timestep, model_options={}, seed=None):
         if self.active_tile is not None:  # original mode: x is one region
@@ -774,6 +848,12 @@ class SyncTileGuider:
                 "tara_max_penalty": ("FLOAT", {"default": 6.0, "min": 0.0, "max": 30.0, "step": 0.1}),
                 "tara_motion_video": ("INT", {"default": 1, "min": 1, "max": 8}),
                 "freenoise": ("BOOLEAN", {"default": False}),
+                "capstone": ("BOOLEAN", {"default": False, "tooltip":
+                    "Experimental, slower (+1 token per model call). Sequential modes: a clean token from the end of the "
+                    "first window is appended to every later window from capstone_start_step on, for the model call only "
+                    "(capstone idea from hojenaia/viggle-remake-comfyui-long-take, Apache-2.0)."}),
+                "capstone_start_step": ("INT", {"default": 4, "min": 0, "max": 200, "tooltip":
+                    "Sampler steps without the capstone. With 6 steps, 4 = used for the last 2."}),
                 "identity_anchor": ("BOOLEAN", {"default": False, "tooltip":
                     "Sequential modes (carry / long take): the first finished frame of the first window is placed as a "
                     "locked clean frame at the start of every later window, so the subject keeps its identity over a "
@@ -792,7 +872,7 @@ class SyncTileGuider:
                    tile_conditioning_detail=None, detail_below_sigma=0.85, window_frames=0, window_overlap_frames=39,
                    temporal_mode=TEMPORAL_BLEND, carry_frames=21, temporal_reference=False, tara_strength=2.0,
                    tara_window_seconds=0.2, tara_falloff_seconds=0.25, tara_max_penalty=6.0, tara_motion_video=1,
-                   freenoise=False, identity_anchor=False):
+                   freenoise=False, capstone=False, capstone_start_step=4, identity_anchor=False):
         if positive is None and tile_conditioning is None:
             raise ValueError("SyncTile Guider: connect either positive or tile_conditioning.")
         if tile_conditioning_detail is not None:
@@ -810,6 +890,7 @@ class SyncTileGuider:
         g.temporal_mode, g.carry_frames = temporal_mode or TEMPORAL_BLEND, int(carry_frames)
         g.freenoise = bool(freenoise)
         g.identity_anchor = bool(identity_anchor)
+        g.capstone, g.capstone_start_step = bool(capstone), int(capstone_start_step)
         if temporal_reference:
             if model.model_options.get("bfs_h3_native_temporal_v1"):
                 raise ValueError("SyncTile: temporal_reference (TARA) is on here and the BFS native temporal node is also on "
