@@ -147,6 +147,9 @@ T["SyncTileGuiderH3"] = {
     "tara_max_penalty": ("Penalidade máxima (teto). Padrão 6.0; frames distantes continuam visíveis, só pesam menos.",
                          "Maximum penalty (cap). Default 6.0; distant frames stay visible, they just weigh less.",
                          "最大惩罚（上限）。默认 6.0；远处的帧仍可见，只是权重更低。"),
+    "identity_anchor": ("Mantém a identidade em takes longos (modos carry / long take): o primeiro frame pronto da primeira janela entra travado e limpo no começo de cada janela seguinte (ideia 'keystone' do hojenaia/viggle-remake-comfyui-long-take, Apache-2.0).",
+                        "Keeps identity over long takes (carry / long take modes): the first finished frame of the first window is locked as a clean frame at the start of every later window ('keystone' idea from hojenaia/viggle-remake-comfyui-long-take, Apache-2.0).",
+                        "在长镜头中保持身份（carry / long take 模式）：第一个窗口完成的首帧作为锁定的干净帧放在之后每个窗口的开头（'keystone' 思路来自 hojenaia/viggle-remake-comfyui-long-take，Apache-2.0）。"),
     "freenoise": ("FreeNoise (modo blend windows): a parte nova de cada janela recebe uma cópia embaralhada do ruído do início da "
                   "janela anterior, então as janelas sobrepostas começam de ruído parecido e concordam mais cedo: menos mescla/"
                   "fantasma na emenda e menos deriva em vídeos longos. Mesma ideia do MiniMax H3 Context Windows nativo (Kijai, "

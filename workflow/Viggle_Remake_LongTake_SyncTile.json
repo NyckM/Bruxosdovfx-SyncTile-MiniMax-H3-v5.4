@@ -1526,7 +1526,8 @@
     0.25,
     0,
     1,
-    false
+    false,
+    true
    ],
    "widgets_values_named": {
     "tile_width": 1440,

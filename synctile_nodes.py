@@ -418,6 +418,7 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
         v = full_shapes[0]
         steps = len(sigmas) - 1
         prev = None
+        keystone = None
 
         def window_slice(parts, t, a):
             out = [parts[0][:, :, t[0]:t[0] + t[1]]]
@@ -493,6 +494,12 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                         afade = torch.ones(a[1], device=canvas_x[0].device)
                         afade[:ac] = 0
                     mask = _pack(mparts)
+                    if getattr(self, "identity_anchor", False) and keystone is not None and c > 0:
+                        # first finished frame of window 1 as a locked clean frame at token 0 (inside the locked
+                        # prefix, which is discarded at the join): the model keeps seeing the original identity
+                        lp = _unpack(wlat, wshapes)
+                        lp[0][:, :, :1] = keystone.to(lp[0].dtype)
+                        wlat = _pack(lp)
 
                 last = {}
 
@@ -535,6 +542,8 @@ class SyncTileGuiderImpl(comfy.samplers.CFGGuider):
                     res_0 = res_x                                    # fully denoised: state == x0
                 write(canvas_x, _unpack(res_x, wshapes), t, a, fade, afade)
                 write(canvas_0, _unpack(res_0, wshapes), t, a, fade, afade)
+                if k == 0 and getattr(self, "identity_anchor", False):
+                    keystone = canvas_0[0][:, :, :1].clone()
                 prev = (t, a)
                 comfy.model_management.throw_exception_if_processing_interrupted()
         finally:
@@ -765,6 +774,10 @@ class SyncTileGuider:
                 "tara_max_penalty": ("FLOAT", {"default": 6.0, "min": 0.0, "max": 30.0, "step": 0.1}),
                 "tara_motion_video": ("INT", {"default": 1, "min": 1, "max": 8}),
                 "freenoise": ("BOOLEAN", {"default": False}),
+                "identity_anchor": ("BOOLEAN", {"default": False, "tooltip":
+                    "Sequential modes (carry / long take): the first finished frame of the first window is placed as a "
+                    "locked clean frame at the start of every later window, so the subject keeps its identity over a "
+                    "long take (keystone idea from hojenaia/viggle-remake-comfyui-long-take, Apache-2.0)."}),
             },
         }
 
@@ -779,7 +792,7 @@ class SyncTileGuider:
                    tile_conditioning_detail=None, detail_below_sigma=0.85, window_frames=0, window_overlap_frames=39,
                    temporal_mode=TEMPORAL_BLEND, carry_frames=21, temporal_reference=False, tara_strength=2.0,
                    tara_window_seconds=0.2, tara_falloff_seconds=0.25, tara_max_penalty=6.0, tara_motion_video=1,
-                   freenoise=False):
+                   freenoise=False, identity_anchor=False):
         if positive is None and tile_conditioning is None:
             raise ValueError("SyncTile Guider: connect either positive or tile_conditioning.")
         if tile_conditioning_detail is not None:
@@ -796,6 +809,7 @@ class SyncTileGuider:
         g.window_frames, g.window_overlap = int(window_frames or 0), int(window_overlap_frames)
         g.temporal_mode, g.carry_frames = temporal_mode or TEMPORAL_BLEND, int(carry_frames)
         g.freenoise = bool(freenoise)
+        g.identity_anchor = bool(identity_anchor)
         if temporal_reference:
             if model.model_options.get("bfs_h3_native_temporal_v1"):
                 raise ValueError("SyncTile: temporal_reference (TARA) is on here and the BFS native temporal node is also on "
