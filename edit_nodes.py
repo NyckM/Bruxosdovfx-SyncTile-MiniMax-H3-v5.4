@@ -227,5 +227,86 @@ class SyncTileEditConditioning:
         return ({"canvas": (lat_h, lat_w), "T": T, "A": A, "tiles": regions, "conds": conds, "vae": vae}, latent)
 
 
-NODE_CLASS_MAPPINGS = {"SyncTileEditConditioningH3": SyncTileEditConditioning}
-NODE_DISPLAY_NAME_MAPPINGS = {"SyncTileEditConditioningH3": "bruxosdovfx • SyncTile Edit Conditioning (Remake / Ripple, H3)"}
+class SyncTilePH3ImageConditioning:
+    """SyncTile conditioning for p-h3-image (single image generation / edit) on very large canvases.
+
+    Runs the core `p-h3-image Conditioning` once (prompt, Qwen vision images, reference latents), then rebuilds the
+    DiT reference block of image_1 (the picture to edit) PER TILE as a crop of its latent at canvas size, so every
+    tile edits its own part of the picture while the text encoder still sees the whole of it. image_2.. stay global
+    (identity / style references). Feed the SYNCTILE_CONDS to the SyncTile Guider's tile_conditioning.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "clip": ("CLIP",), "vae": ("VAE",),
+            "prompt": ("STRING", {"multiline": True, "default": "", "forceInput": True}),
+            "width": ("INT", {"default": 0, "min": 0, "max": 32768, "step": 32,
+                              "tooltip": "Canvas width. 0 = size of image_1 after the model's area scaling (like the core node)."}),
+            "height": ("INT", {"default": 0, "min": 0, "max": 32768, "step": 32}),
+            "tile_width": ("INT", {"default": 0, "min": 0, "max": 16384, "step": 32, "tooltip": "0 = auto (tile_megapixels)."}),
+            "tile_height": ("INT", {"default": 0, "min": 0, "max": 16384, "step": 32}),
+            "tile_megapixels": ("FLOAT", {"default": 8.0, "min": 0.5, "max": 32.0, "step": 0.5,
+                                          "tooltip": "Auto tile area. p-h3-image is tuned for 2912x2912 (8.5 MP); a single frame has few tokens, so tiles can be much larger than for video."}),
+            "min_overlap": ("INT", {"default": 16, "min": 2, "max": 64, "tooltip": "Tile overlap in latent cells (1 cell = 16 px)."}),
+        }, "optional": {
+            "image_1": ("IMAGE", {"tooltip": "The picture to edit (<Picture 1>). Leave empty for text-to-image."}),
+            "image_2": ("IMAGE",), "image_3": ("IMAGE",), "image_4": ("IMAGE",),
+            "latent": ("LATENT", {"tooltip": "The latent the guider will sample (e.g. the output of a latent upscale). When connected, its size is the canvas and it is passed through."}),
+        }}
+
+    RETURN_TYPES = ("SYNCTILE_CONDS", "LATENT")
+    RETURN_NAMES = ("tile_conditioning", "latent")
+    FUNCTION = "encode"
+    CATEGORY = CAT
+    DESCRIPTION = ("p-h3-image on SyncTile tiles: the edit picture is cropped per tile, references stay global. "
+                   "For canvases beyond what one pass can hold, and for the tile pass after a latent upscale.")
+
+    def encode(self, clip, vae, prompt, width, height, tile_width, tile_height, tile_megapixels, min_overlap,
+               image_1=None, image_2=None, image_3=None, image_4=None, latent=None):
+        from comfy_extras.nodes_minimax_h3 import PH3ImageConditioning
+        st = _st()
+        if latent is not None:                                   # canvas = the latent that will be sampled
+            _h, _w, _, _ = st._canvas_from_latent(latent)
+            width, height = _w * st.STRIDE, _h * st.STRIDE
+        images = {f"image_{i + 1}": im for i, im in enumerate([image_1, image_2, image_3, image_4]) if im is not None}
+        out = PH3ImageConditioning.execute(clip=clip, prompt=prompt, width=width, height=height, vae=vae,
+                                           images=images or None)
+        cond = out.args[0]
+        latent = latent if latent is not None else out.args[1]
+        lat_h, lat_w, T, A = st._canvas_from_latent(latent)
+        width, height = lat_w * st.STRIDE, lat_h * st.STRIDE
+        if tile_width and tile_height:
+            tw_px, th_px = tile_width, tile_height
+        else:
+            tw_, th_ = st.auto_tile(lat_h, lat_w, min_overlap, budget=int(tile_megapixels * 1e6 / (st.STRIDE ** 2)))
+            tw_px, th_px = tw_ * st.STRIDE, th_ * st.STRIDE
+        regions = st.make_grid(lat_h, lat_w, tw_px, th_px, min_overlap, T, A, 0, 39)
+        z_full = None
+        if image_1 is not None:
+            z_full = vae.encode(_to_canvas(image_1[:1], width, height))      # image_1 at canvas size
+        base_refs = []
+        for c in cond:
+            if "minimax_refs" in c[1]:
+                base_refs = list(c[1]["minimax_refs"])
+                break
+        conds = []
+        for r in regions:
+            if z_full is None or not base_refs:
+                conds.append(cond)
+                continue
+            x, y, w, h = r["box"]
+            ref0 = dict(base_refs[0])
+            ref0.update({"kind": "image", "latent_h": h, "latent_w": w,
+                         "latent": z_full[..., y:y + h, x:x + w].contiguous()})
+            conds.append(node_helpers.conditioning_set_values(cond, {"minimax_refs": [ref0] + base_refs[1:]}))
+        log.info("SyncTile p-h3-image: %d tiles of %dx%d on a %dx%d canvas (%.1f MP), image_1 %s",
+                 len(regions), regions[0]["box"][2] * st.STRIDE, regions[0]["box"][3] * st.STRIDE, width, height,
+                 width * height / 1e6, "cropped per tile" if z_full is not None else "absent (text-to-image)")
+        return ({"canvas": (lat_h, lat_w), "T": T, "A": A, "tiles": regions, "conds": conds, "vae": vae}, latent)
+
+
+NODE_CLASS_MAPPINGS = {"SyncTileEditConditioningH3": SyncTileEditConditioning,
+                      "SyncTilePH3ImageConditioning": SyncTilePH3ImageConditioning}
+NODE_DISPLAY_NAME_MAPPINGS = {"SyncTileEditConditioningH3": "bruxosdovfx • SyncTile Edit Conditioning (Remake / Ripple, H3)",
+                              "SyncTilePH3ImageConditioning": "bruxosdovfx • SyncTile p-h3-image Conditioning (edit / generate)"}
